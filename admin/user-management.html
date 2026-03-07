@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>eHelpDesk - User Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="user-management.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <a href="#" class="sidebar-logo">
+      <i class="fa-solid fa-headset"></i>
+      <span>eHelpDesk</span>
+    </a>
+
+    <nav class="nav-links">
+      <a href="admin-dashboard.html" class="nav-item" title="Dashboard">
+        <i class="fa-solid fa-chart-column"></i> <span>Dashboard</span>
+      </a>
+      <a href="ticket-directory.html" class="nav-item" title="Ticket Directory">
+        <i class="fa-solid fa-ticket"></i> <span>Ticket Directory</span>
+      </a>
+      <a href="user-management.html" class="nav-item active" title="User Management">
+        <i class="fa-solid fa-user-group"></i> <span>User Management</span>
+      </a>
+    </nav>
+
+    <a href="login.html" class="sign-out" title="Sign Out">
+      <i class="fa-solid fa-arrow-right-from-bracket"></i> <span>Sign Out</span>
+    </a>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    
+    <div class="dashboard-container">
+      
+      <!-- HEADER -->
+      <header class="header">
+        <div class="header-text">
+          <h1>User Management</h1>
+          <p>Manage technical support staff, assign service tiers, and monitor real-time availability.</p>
+        </div>
+      </header>
+
+      <!-- CONTROLS / FILTERS -->
+      <div class="controls-bar">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search by Staff Name or Email...">
+        
+        <div class="filters-group">
+          <!-- Status Filter -->
+          <select class="custom-select" id="statusFilter">
+            <option value="All Status">All Status</option>
+            <option value="Online">Online</option>
+            <option value="Offline">Offline</option>
+          </select>
+          
+          <!-- Department Filter -->
+          <select class="custom-select" id="departmentFilter">
+            <option value="All Departments">All Departments</option>
+            <option value="SOIT">SOIT</option>
+            <option value="DOIT">DOIT</option>
+            <option value="Registrar">Registrar</option>
+          </select>
+
+          <!-- Add Staff Button -->
+          <button class="btn-add-staff" onclick="openAddStaffModal()">
+            <i class="fa-solid fa-plus"></i> Add Staff
+          </button>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="table-panel">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th style="width: 20%;">STAFF MEMBER</th>
+              <th style="width: 25%;">EMAIL</th>
+              <th style="width: 15%;">DEPARTMENT</th>
+              <th style="width: 15%;">TIER</th>
+              <th style="width: 15%;">AVAILABILITY</th>
+              <th style="width: 10%; text-align: center;">ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="staffTableBody">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ADD/EDIT STAFF MODAL -->
+  <div class="modal-overlay" id="addStaffModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add New Staff</h2>
+        <button class="btn-close" onclick="closeAddStaffModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Form encapsulates body and footer to catch "Enter" submit easily -->
+      <form id="addStaffForm" onsubmit="saveStaff(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="newStaffName" placeholder="e.g. John Doe" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="newStaffEmail" placeholder="e.g. jdoe@mymail.mapua.edu.ph" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+              <label class="form-label">Department</label>
+              <select class="form-select" id="newStaffDept" required>
+                <option value="SOIT">SOIT</option>
+                <option value="DOIT">DOIT</option>
+                <option value="Registrar">Registrar</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tier / Level</label>
+              <select class="form-select" id="newStaffTier" required>
+                <option value="Level 0">Level 0</option>
+                <option value="Level 1">Level 1</option>
+                <option value="Level 2">Level 2</option>
+                <option value="Level 3">Level 3</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" onclick="closeAddStaffModal()">Cancel</button>
+          <button type="submit" class="btn-save" id="saveStaffBtn">Add Staff</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="user-management.js"></script>
+</body>
+</html>

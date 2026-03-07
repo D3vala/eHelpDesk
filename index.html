@@ -6,8 +6,15 @@
     <title>eHelpDesk Dashboard</title>
     <link rel="stylesheet" href="style_student.css" />
     <link rel="stylesheet" href="style_student_dashboard.css" />
+    <!-- Redirect to login.html on initial load -->
+    <meta http-equiv="refresh" content="0; url=login.html">
   </head>
   <body>
+    <!-- Fallback link in case meta refresh doesn't work -->
+    <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+      <p>Redirecting to login page...</p>
+      <p>If you are not redirected automatically, <a href="login.html">click here</a>.</p>
+    </div>
     <div class="header-top-section">
       <header class="navbar">
         <a href="index.html" class="logo-link">
