@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>eHelpDesk Dashboard</title>
+    <link rel="stylesheet" href="staff-dashboard.css" />
+  </head>
+  <body>
+    <div class="header-top-section">
+      <header class="navbar">
+        <a href="../staff/staff-dashboard.html" class="logo-link">
+          <div class="logo">
+            <img src="../img/headset-solid.svg" alt="Logo" class="icon-logo" />
+            <h1>eHelpDesk</h1>
+          </div>
+        </a>
+        <div class="nav-controls">
+          <div class="search-bar">
+            <img
+              src="../img/magnifying-glass-solid-full.svg"
+              alt="Search"
+              class="search-icon"
+            />
+            <input type="text" id="searchInput" placeholder="Search Tickets" />
+          </div>
+          <div class="auth-buttons" id="auth-section">
+            <a href="../student/student-dashboard.html" class="btn btn-black">Create Ticket</a>
+            <div
+              class="profile-container"
+              id="profile-menu-wrapper"
+              style="position: relative; display: none"
+            >
+              <div id="dropdown-menu" class="user-dropdown">
+                <div class="dropdown-header">
+                  <p id="user-display-name" class="user-name-text">
+                    Loading...
+                  </p>
+                  <p id="user-display-email" class="user-email-text">
+                    Loading...
+                  </p>
+                </div>
+                <hr />
+                <button
+                  type="button"
+                  onclick="handleLogout()"
+                  class="logout-btn"
+                >
+                  <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                </button>
+              </div>
+            </div>
+            <a href="../login.html" id="login-nav-btn" class="btn btn-black"
+              >Login</a
+            >
+          </div>
+        </div>
+      </header>
+    </div>
+
+    <main class="container">
+      <section class="stats-container">
+        <div class="stat-card">
+          <div class="stat-info">
+            <p>All Tickets</p>
+            <span class="stat-number">0</span>
+          </div>
+          <img
+            src="../img/ticket-solid-full.svg"
+            class="card-bg-icon reference-style ticket-upright"
+            alt=""
+          />
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <p>Pending Tickets</p>
+            <span class="stat-number">0</span>
+          </div>
+          <img
+            src="../img/clock-regular-full.svg"
+            class="card-bg-icon reference-style"
+            alt=""
+          />
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <p>Closed / Solved Tickets</p>
+            <span class="stat-number">0</span>
+          </div>
+          <img
+            src="../img/circle-check-regular-full.svg"
+            class="card-bg-icon reference-style"
+            alt=""
+          />
+        </div>
+      </section>
+
+      <div class="ticket-wrapper">
+        <div class="status-container">
+          <select class="status-dropdown">
+            <option value="" disabled selected>Status</option>
+            <option value="open">Open</option>
+            <option value="progress">In Progress</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+
+        <div class="tabs-row">
+          <div
+            class="tab-item active-tab"
+            id="tab-ccd"
+            onclick="switchTab('ccd')"
+          >
+            Tickets I'm CC'd On
+          </div>
+          <div
+            class="tab-item inactive-tab"
+            id="tab-my"
+            onclick="switchTab('my')"
+          >
+            My Tickets
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table id="ticket-table">
+            <thead>
+              <tr>
+                <th>Ticket ID</th>
+                <th>Subject</th>
+                <th>Created On</th>
+                <th id="dynamic-header">Requested By</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr>
+                <td colspan="5" class="no-records">No Records to Display</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <script src="staff-dashboard.js"></script>
+  </body>
+</html>

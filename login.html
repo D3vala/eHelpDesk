@@ -301,10 +301,18 @@
           />
         </div>
         <div class="field-group">
-          <input type="password" placeholder="Password" />
+          <input type="password" id="login-password" placeholder="Password" />
           <a class="forgot-link" onclick="showPage('page-reset')"
             >Forgot your password?</a
           >
+        </div>
+        <div class="field-group" style="margin-top: 8px;">
+          <small style="color: #666; font-size: 12px;">
+            Demo Accounts:<br>
+            • Admin: admin@mapua.edu.ph | Password: admin123<br>
+            • Student: student@mapua.edu.ph | Password: student123<br>
+            • Staff: staff@mapua.edu.ph | Password: staff123
+          </small>
         </div>
 
         <button class="btn-primary" onclick="handleLogin()">Sign in</button>
@@ -524,8 +532,47 @@
       // --- SMART LOGIN ROUTING ---
       function handleLogin() {
         const emailInput = document.getElementById("login-email");
+        const passwordInput = document.getElementById("login-password");
         const email = emailInput.value.trim().toLowerCase();
+        const password = passwordInput.value.trim();
 
+        // Check for admin credentials
+        if (email === "admin@mapua.edu.ph" && password === "admin123") {
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("userInitial", "A");
+          localStorage.setItem("userFullName", "Administrator");
+          localStorage.setItem("userEmail", email);
+          localStorage.setItem("userRole", "admin");
+          
+          window.location.href = "admin/admin-dashboard.html";
+          return;
+        }
+
+        // Check for student credentials
+        if (email === "student@mapua.edu.ph" && password === "student123") {
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("userInitial", "S");
+          localStorage.setItem("userFullName", "Student User");
+          localStorage.setItem("userEmail", email);
+          localStorage.setItem("userRole", "student");
+          
+          window.location.href = "student/student-dashboard.html";
+          return;
+        }
+
+        // Check for staff credentials
+        if (email === "staff@mapua.edu.ph" && password === "staff123") {
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("userInitial", "S");
+          localStorage.setItem("userFullName", "Staff Member");
+          localStorage.setItem("userEmail", email);
+          localStorage.setItem("userRole", "staff");
+          
+          window.location.href = "staff/staff-dashboard.html";
+          return;
+        }
+
+        // Check for general Mapúa email (fallback)
         if (
           email.endsWith("@mymail.mapua.edu.ph") ||
           email.endsWith("@mapua.edu.ph")
@@ -535,10 +582,10 @@
           localStorage.setItem("isLoggedIn", "true");
           localStorage.setItem("userInitial", namePart.charAt(0).toUpperCase());
           localStorage.setItem("userFullName", namePart);
-          // ADD THIS LINE BELOW:
           localStorage.setItem("userEmail", email);
+          localStorage.setItem("userRole", "student");
 
-          window.location.href = "index.html";
+          window.location.href = "student/student-dashboard.html";
         } else {
           alert("Please use a Mapúa email.");
         }
