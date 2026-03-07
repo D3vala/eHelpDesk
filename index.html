@@ -3,11 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirecting...</title>
+    <title>Loading...</title>
     <meta http-equiv="refresh" content="0; url=login.html">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #fcfcfc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #000;
+        }
+        
+        .loading-container {
+            text-align: center;
+            background: #fff;
+            padding: 60px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .logo {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background-color: #000;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo-text {
+            font-size: 24px;
+            font-weight: 800;
+        }
+        
+        .loading-text {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #666;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fallback-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #000;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        
+        .fallback-link:hover {
+            background-color: #fff;
+            color: #000;
+            border: 1px solid #000;
+        }
+    </style>
 </head>
 <body>
-    <p>Redirecting to login page...</p>
-    <p>If you are not redirected automatically, <a href="login.html">click here</a>.</p>
+    <div class="loading-container">
+        <div class="logo">
+            <div class="logo-icon">
+                <span style="color: #fff; font-size: 18px;">i</span>
+            </div>
+            <div class="logo-text">eHelpDesk</div>
+        </div>
+        <div class="spinner"></div>
+        <div class="loading-text">Loading application...</div>
+        <p style="font-size: 14px; color: #888; margin-bottom: 20px;">
+            If you are not redirected automatically, 
+            <a href="login.html" class="fallback-link">click here</a>
+            to proceed to login.
+        </p>
+    </div>
 </body>
 </html>
