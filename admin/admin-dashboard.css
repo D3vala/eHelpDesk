@@ -869,7 +869,374 @@ body {
 .btn-update:hover { background: #333; }
 .btn-cancel:hover { background: #f8f8f8; }
 
-/* User Management Modal Styles */
+/* ─────────────────────────────────────────────────────────────────────────────
+   CONTROLS BAR (shared by Ticket Directory & User Management)
+───────────────────────────────────────────────────────────────────────────── */
+
+.controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 10px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #111;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  border-color: #111;
+}
+
+.search-input::placeholder {
+  color: #aaa;
+}
+
+.filters-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.custom-select {
+  padding: 10px 36px 10px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2212%22%20height%3D%228%22%20viewBox%3D%220%200%2012%208%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M1%201.5L6%206.5L11%201.5%22%20stroke%3D%22%23111111%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.custom-select:focus {
+  border-color: #111;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TABLE PANEL (shared card wrapper)
+───────────────────────────────────────────────────────────────────────────── */
+
+.table-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  overflow: visible;
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TICKET DIRECTORY TABLE
+───────────────────────────────────────────────────────────────────────────── */
+
+.directory-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.directory-table thead {
+  background: #f8f8f8;
+  border-bottom: 1px solid #efefef;
+}
+
+.directory-table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.directory-table thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+.directory-table thead th {
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.directory-table tbody tr {
+  border-bottom: 1px solid #f4f4f4;
+  transition: background 0.15s;
+}
+
+.directory-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.directory-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.directory-table tbody td {
+  padding: 16px 20px;
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directory-table tbody td:first-child {
+  font-weight: 700;
+  color: #111;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.directory-table tbody td:last-child {
+  overflow: visible;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   STATUS PILLS
+───────────────────────────────────────────────────────────────────────────── */
+
+.status-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.status-progress {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-resolved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-breached {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ACTION BUTTONS (ticket table)
+───────────────────────────────────────────────────────────────────────────── */
+
+.btn-action {
+  padding: 6px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  background: #fff;
+  color: #111;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-action:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   USER MANAGEMENT TABLE
+───────────────────────────────────────────────────────────────────────────── */
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.user-table thead {
+  background: #f8f8f8;
+  border-bottom: 1px solid #efefef;
+}
+
+.user-table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.user-table thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+.user-table thead th {
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.user-table tbody tr {
+  border-bottom: 1px solid #f4f4f4;
+  transition: background 0.15s;
+}
+
+.user-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.user-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.user-table tbody td {
+  padding: 14px 20px;
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Staff name cell */
+.staff-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.staff-avatar {
+  width: 34px;
+  height: 34px;
+  background: #111;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.staff-name {
+  font-weight: 700;
+  color: #111;
+  font-size: 13px;
+}
+
+/* Availability badge */
+.availability {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.availability i {
+  font-size: 8px;
+}
+
+.availability.online {
+  color: #15803d;
+}
+
+.availability.online i {
+  color: #22c55e;
+}
+
+.availability.offline {
+  color: #888;
+}
+
+.availability.offline i {
+  color: #bbb;
+}
+
+/* Action icon buttons */
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fff;
+  color: #555;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.icon-btn:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+/* Add Staff Button */
+.btn-add-staff {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-add-staff:hover {
+  background: #333;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   USER MANAGEMENT MODAL STYLES
+───────────────────────────────────────────────────────────────────────────── */
+
 .form-group {
   display: flex;
   flex-direction: column;

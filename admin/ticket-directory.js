@@ -1,5 +1,5 @@
-// --- DATABASE MOCK ---
-let tickets = [
+// --- DATABASE MOCK (seed data used only when localStorage is empty) ---
+const TICKET_SEED = [
   {
     id: "#260219-001",
     subject: "Password Reset Request",
@@ -46,13 +46,42 @@ let tickets = [
   }
 ];
 
-// Staff Database (to check online status)
-const staffMembers = [
-  { name: "Phoenix (L0)", online: true },
-  { name: "Dominic (L1)", online: true },
-  { name: "Chloie (L2)", online: true },
-  { name: "Naveen (L3)", online: false }
-];
+// --- LOCALSTORAGE PERSISTENCE ---
+let tickets = [];
+
+function initData() {
+  const storedTickets = localStorage.getItem('eHelpDesk_tickets');
+  if (storedTickets) {
+    tickets = JSON.parse(storedTickets);
+  } else {
+    // Seed with mock data on first load
+    tickets = JSON.parse(JSON.stringify(TICKET_SEED));
+    localStorage.setItem('eHelpDesk_tickets', JSON.stringify(tickets));
+  }
+}
+
+function syncTickets() {
+  localStorage.setItem('eHelpDesk_tickets', JSON.stringify(tickets));
+}
+
+// Build staff list from localStorage (synced with user-management.js)
+// Falls back to hardcoded defaults if user management hasn't been opened yet.
+function getStaffMembers() {
+  const stored = localStorage.getItem('eHelpDesk_staffData');
+  if (stored) {
+    return JSON.parse(stored).map(s => ({
+      name: `${s.name} (${s.tier.replace('Level ', 'L')})`,
+      online: s.status === 'Online'
+    }));
+  }
+  // Default seed fallback
+  return [
+    { name: "Phoenix (L0)", online: true },
+    { name: "Dominic (L1)", online: true },
+    { name: "Chloie (L2)", online: true },
+    { name: "Naveen (L3)", online: false }
+  ];
+}
 
 let currentOpenTicketId = null;
 let replyMode = 'sms'; // 'sms' or 'internal'
@@ -82,6 +111,8 @@ function getStatusClass(status) {
 
 // --- INIT ---
 document.addEventListener('DOMContentLoaded', () => {
+  initData();
+
   // Event Listeners for filters
   document.getElementById('status-filter').addEventListener('change', renderTable);
   document.getElementById('assignee-filter').addEventListener('change', renderTable);
@@ -99,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Auto breach if it crosses 0
         if (t.slaMs < 0 && t.status === 'In Progress') {
           t.status = 'Breached';
+          syncTickets(); // Persist breach to localStorage
           renderTable(); // Update the pill in the table immediately
         }
       }
@@ -173,8 +205,8 @@ function populateAssigneeDropdown() {
   const select = document.getElementById('modal-assignee-select');
   select.innerHTML = '';
   
-  // Filter only online staff
-  const onlineStaff = staffMembers.filter(s => s.online);
+  // Filter only online staff from live localStorage data
+  const onlineStaff = getStaffMembers().filter(s => s.online);
   
   onlineStaff.forEach(staff => {
     const opt = document.createElement('option');
@@ -333,6 +365,7 @@ function escalateTicket() {
   };
 
   t.activities.unshift(newAct);
+  syncTickets(); // Persist escalation to localStorage
   renderActivities(t);
 }
 
@@ -385,6 +418,7 @@ function submitMessage() {
   // Add to beginning of array so newest is at top
   t.activities.unshift(newAct);
   
+  syncTickets(); // Persist reply to localStorage
   textarea.value = '';
   updateCharCount();
   renderActivities(t);
@@ -401,6 +435,7 @@ function saveTicketUpdates() {
   t.assignee = newAssignee;
 
   // Note: If changed to Resolved, the global interval ignores it and stops ticking down.
+  syncTickets(); // Persist status/assignee change to localStorage
 
   renderTable();
   closeModal();

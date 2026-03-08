@@ -662,6 +662,39 @@
           e.preventDefault();
           currentTicketID = generateTicketID();
 
+          // --- SAVE TICKET TO LOCALSTORAGE (no-database testability) ---
+          const campus = document.querySelector("select:first-of-type")?.value || "Not Specified";
+          const dept = document.querySelectorAll("select")[1]?.value || "Not Specified";
+          const ccs = document.querySelector('input[placeholder="Select CCs"]')?.value || "none";
+          const subject = document.querySelector('input[placeholder="Enter subject"]')?.value || "No Subject";
+          const description = document.getElementById("editor")?.innerText || "";
+          const now = new Date();
+          const createdStr = now.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+          const userFullName = localStorage.getItem("userFullName") || "Anonymous";
+          const userEmail = localStorage.getItem("userEmail") || "unknown@mapua.edu.ph";
+
+          const newTicket = {
+            id: currentTicketID,
+            subject: subject,
+            email: userEmail,
+            assignee: "Unassigned",
+            slaMs: 86400000, // 24-hour SLA default
+            status: "In Progress",
+            description: description,
+            reporter: { name: userFullName, phone: "N/A" },
+            details: { campus: campus, dept: dept, cc: ccs, created: createdStr },
+            attachments: uploadedFiles.map(f => ({ name: f.name, size: (f.size / 1024 / 1024).toFixed(1) + " MB" })),
+            activities: [
+              { type: "system", author: "System", text: `Ticket created by ${userFullName} (${userEmail})`, time: "Just now" }
+            ]
+          };
+
+          const stored = localStorage.getItem("eHelpDesk_tickets");
+          const allTickets = stored ? JSON.parse(stored) : [];
+          allTickets.unshift(newTicket); // newest first
+          localStorage.setItem("eHelpDesk_tickets", JSON.stringify(allTickets));
+          // --- END SAVE ---
+
           const idDisplay = document.querySelector(".ticket-id");
           if (idDisplay) idDisplay.innerText = `Ticket ID: ${currentTicketID}`;
 
@@ -706,40 +739,29 @@
       function closeViewTicket() {
         const overlay = document.getElementById("viewTicketOverlay");
         if (overlay) overlay.style.display = "none";
-        window.location.href = "index.html";
+      }
 
-        // Monitor the editor for cursor movements to update button states
+      function resetForm() {
+        // Hide popups
+        const popup = document.getElementById("popupOverlay");
+        if (popup) popup.style.display = "none";
+        const viewOverlay = document.getElementById("viewTicketOverlay");
+        if (viewOverlay) viewOverlay.style.display = "none";
+
+        // Reset the form fields
+        const form = document.getElementById("ticketForm");
+        if (form) form.reset();
+
+        // Reset rich-text editor
         const editor = document.getElementById("editor");
-        if (editor) {
-          editor.addEventListener("keyup", updateButtonStates);
-          editor.addEventListener("mouseup", updateButtonStates);
-        }
+        if (editor) editor.innerHTML = "Enter description. Type / to open a list";
 
-        function updateButtonStates() {
-          // Select all tool buttons
-          const buttons = document.querySelectorAll(".tool-btn");
+        // Clear uploaded files
+        uploadedFiles = [];
+        renderFileList();
 
-          buttons.forEach((btn) => {
-            // This is a simple version; you can map specific buttons to commands
-            const command = btn.getAttribute("onclick");
-
-            if (command && command.includes("bold")) {
-              document.queryCommandState("bold")
-                ? btn.classList.add("active")
-                : btn.classList.remove("active");
-            }
-            if (command && command.includes("italic")) {
-              document.queryCommandState("italic")
-                ? btn.classList.add("active")
-                : btn.classList.remove("active");
-            }
-            if (command && command.includes("underline")) {
-              document.queryCommandState("underline")
-                ? btn.classList.add("active")
-                : btn.classList.remove("active");
-            }
-          });
-        }
+        // Reset ticket ID
+        currentTicketID = "";
       }
     </script>
   </body>
