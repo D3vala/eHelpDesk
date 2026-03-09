@@ -358,7 +358,7 @@
           </div>
         </div>
 
-        <button class="btn-primary" id="signup-btn" onclick="handleSignUp()">Create account</button>
+        <button class="btn-primary" id="signup-btn">Create account</button>
 
         <div class="divider">or</div>
 
@@ -380,225 +380,232 @@
       </div>
     </div>
 
-    <script>
+    <script type="module">
       import { supabase } from './supabase-config.js';
 
-      // Password validation
-      const passwordInput = document.getElementById('signup-password');
-      const requirements = {
-        length: document.getElementById('req-length'),
-        uppercase: document.getElementById('req-uppercase'),
-        lowercase: document.getElementById('req-lowercase'),
-        number: document.getElementById('req-number')
-      };
+      // Initialize event listeners when DOM is loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        // Password validation
+        const passwordInput = document.getElementById('signup-password');
+        const requirements = {
+          length: document.getElementById('req-length'),
+          uppercase: document.getElementById('req-uppercase'),
+          lowercase: document.getElementById('req-lowercase'),
+          number: document.getElementById('req-number')
+        };
 
-      passwordInput.addEventListener('input', validatePassword);
+        passwordInput.addEventListener('input', validatePassword);
 
-      function validatePassword() {
-        const password = passwordInput.value;
-        
-        // Check length
-        if (password.length >= 8) {
-          requirements.length.classList.add('valid');
-          requirements.length.classList.remove('invalid');
-          requirements.length.innerHTML = '<i class="fa-solid fa-check-circle"></i> At least 8 characters';
-        } else {
-          requirements.length.classList.add('invalid');
-          requirements.length.classList.remove('valid');
-          requirements.length.innerHTML = '<i class="fa-solid fa-circle"></i> At least 8 characters';
-        }
+        // Add event listener to signup button
+        const signupBtn = document.getElementById('signup-btn');
+        signupBtn.addEventListener('click', handleSignUp);
 
-        // Check uppercase
-        if (/[A-Z]/.test(password)) {
-          requirements.uppercase.classList.add('valid');
-          requirements.uppercase.classList.remove('invalid');
-          requirements.uppercase.innerHTML = '<i class="fa-solid fa-check-circle"></i> At least one uppercase letter';
-        } else {
-          requirements.uppercase.classList.add('invalid');
-          requirements.uppercase.classList.remove('valid');
-          requirements.uppercase.innerHTML = '<i class="fa-solid fa-circle"></i> At least one uppercase letter';
-        }
-
-        // Check lowercase
-        if (/[a-z]/.test(password)) {
-          requirements.lowercase.classList.add('valid');
-          requirements.lowercase.classList.remove('invalid');
-          requirements.lowercase.innerHTML = '<i class="fa-solid fa-check-circle"></i> At least one lowercase letter';
-        } else {
-          requirements.lowercase.classList.add('invalid');
-          requirements.lowercase.classList.remove('valid');
-          requirements.lowercase.innerHTML = '<i class="fa-solid fa-circle"></i> At least one lowercase letter';
-        }
-
-        // Check number
-        if (/\d/.test(password)) {
-          requirements.number.classList.add('valid');
-          requirements.number.classList.remove('invalid');
-          requirements.number.innerHTML = '<i class="fa-solid fa-check-circle"></i> At least one number';
-        } else {
-          requirements.number.classList.add('invalid');
-          requirements.number.classList.remove('valid');
-          requirements.number.innerHTML = '<i class="fa-solid fa-circle"></i> At least one number';
-        }
-      }
-
-      // Show loading overlay
-      function showLoading() {
-        document.getElementById('loading-overlay').style.display = 'flex';
-        document.getElementById('signup-btn').disabled = true;
-      }
-
-      // Hide loading overlay
-      function hideLoading() {
-        document.getElementById('loading-overlay').style.display = 'none';
-        document.getElementById('signup-btn').disabled = false;
-      }
-
-      // Show error message
-      function showError(message) {
-        const errorDiv = document.getElementById('error-message');
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-        hideLoading();
-      }
-
-      // Show success message
-      function showSuccess(message) {
-        const successDiv = document.getElementById('success-message');
-        successDiv.textContent = message;
-        successDiv.style.display = 'block';
-        hideLoading();
-      }
-
-      // Handle sign-up
-      async function handleSignUp() {
-        console.log('Sign up button clicked');
-        
-        const name = document.getElementById('signup-name').value.trim();
-        const email = document.getElementById('signup-email').value.trim().toLowerCase();
-        const password = document.getElementById('signup-password').value;
-
-        console.log('Form values:', { name, email, password });
-
-        // Validation
-        if (!name || !email || !password) {
-          showError('Please fill in all fields.');
-          return;
-        }
-
-        if (!email.includes('@mapua.edu.ph') && !email.includes('@mymail.mapua.edu.ph')) {
-          showError('Please use a Mapúa email address.');
-          return;
-        }
-
-        // Password strength validation
-        if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-          showError('Password must meet all requirements.');
-          return;
-        }
-
-        console.log('Validation passed, showing loading...');
-        showLoading();
-
-        try {
-          console.log('Attempting Supabase sign up...');
-          // Sign up with Supabase Auth
-          const { data, error } = await supabase.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-              data: {
-                full_name: name
-              }
-            }
-          });
-
-          console.log('Supabase response:', { data, error });
-
-          if (error) {
-            throw error;
-          }
-
-          if (data.user) {
-            console.log('User created, creating profile...');
-            // Auto-create user profile
-            await createUserProfile(email, name);
-            showSuccess('Account created successfully! Please check your email for verification.');
-            
-            // Redirect to login after 3 seconds
-            setTimeout(() => {
-              window.location.href = 'login.html';
-            }, 3000);
+        function validatePassword() {
+          const password = passwordInput.value;
+          
+          // Check length
+          if (password.length >= 8) {
+            requirements.length.classList.add('valid');
+            requirements.length.classList.remove('invalid');
+            requirements.length.innerHTML = '<i class="fa-solid fa-check-circle"></i> At least 8 characters';
           } else {
-            showError('Please check your email for verification instructions.');
+            requirements.length.classList.add('invalid');
+            requirements.length.classList.remove('valid');
+            requirements.length.innerHTML = '<i class="fa-solid fa-circle"></i> At least 8 characters';
           }
-        } catch (error) {
-          console.error('Sign up error:', error);
-          showError(error.message || 'An error occurred during sign up. Please try again.');
+
+          // Check uppercase
+          if (/[A-Z]/.test(password)) {
+            requirements.uppercase.classList.add('valid');
+            requirements.uppercase.classList.remove('invalid');
+            requirements.uppercase.innerHTML = '<i class="fa-solid fa-check-circle"></i> At least one uppercase letter';
+          } else {
+            requirements.uppercase.classList.add('invalid');
+            requirements.uppercase.classList.remove('valid');
+            requirements.uppercase.innerHTML = '<i class="fa-solid fa-circle"></i> At least one uppercase letter';
+          }
+
+          // Check lowercase
+          if (/[a-z]/.test(password)) {
+            requirements.lowercase.classList.add('valid');
+            requirements.lowercase.classList.remove('invalid');
+            requirements.lowercase.innerHTML = '<i class="fa-solid fa-check-circle"></i> At least one lowercase letter';
+          } else {
+            requirements.lowercase.classList.add('invalid');
+            requirements.lowercase.classList.remove('valid');
+            requirements.lowercase.innerHTML = '<i class="fa-solid fa-circle"></i> At least one lowercase letter';
+          }
+
+          // Check number
+          if (/\d/.test(password)) {
+            requirements.number.classList.add('valid');
+            requirements.number.classList.remove('invalid');
+            requirements.number.innerHTML = '<i class="fa-solid fa-check-circle"></i> At least one number';
+          } else {
+            requirements.number.classList.add('invalid');
+            requirements.number.classList.remove('valid');
+            requirements.number.innerHTML = '<i class="fa-solid fa-circle"></i> At least one number';
+          }
         }
-      }
 
-      // Handle social sign-up
-      async function handleSocialSignUp(provider) {
-        showLoading();
-        
-        try {
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: provider === 'google' ? 'google' : 'azure'
-          });
-
-          if (error) {
-            throw error;
-          }
-        } catch (error) {
-          console.error('Social sign-up error:', error);
-          showError('Social sign-up is not configured. Please use email and password.');
+        // Show loading overlay
+        function showLoading() {
+          document.getElementById('loading-overlay').style.display = 'flex';
+          document.getElementById('signup-btn').disabled = true;
         }
-      }
 
-      // Create user profile in database
-      async function createUserProfile(email, fullName) {
-        try {
-          // Determine role based on email
-          let role = 'student';
-          if (email.includes('admin@') || email.includes('administrator@')) {
-            role = 'admin';
-          } else if (email.includes('staff@') || email.includes('faculty@')) {
-            role = 'staff';
+        // Hide loading overlay
+        function hideLoading() {
+          document.getElementById('loading-overlay').style.display = 'none';
+          document.getElementById('signup-btn').disabled = false;
+        }
+
+        // Show error message
+        function showError(message) {
+          const errorDiv = document.getElementById('error-message');
+          errorDiv.textContent = message;
+          errorDiv.style.display = 'block';
+          hideLoading();
+        }
+
+        // Show success message
+        function showSuccess(message) {
+          const successDiv = document.getElementById('success-message');
+          successDiv.textContent = message;
+          successDiv.style.display = 'block';
+          hideLoading();
+        }
+
+        // Handle sign-up
+        async function handleSignUp() {
+          console.log('Sign up button clicked');
+          
+          const name = document.getElementById('signup-name').value.trim();
+          const email = document.getElementById('signup-email').value.trim().toLowerCase();
+          const password = document.getElementById('signup-password').value;
+
+          console.log('Form values:', { name, email, password });
+
+          // Validation
+          if (!name || !email || !password) {
+            showError('Please fill in all fields.');
+            return;
           }
 
-          // Determine department
-          let department = 'General';
-          if (email.includes('soit@') || email.includes('it@')) {
-            department = 'SOIT';
-          } else if (email.includes('doit@')) {
-            department = 'DOIT';
-          } else if (email.includes('registrar@')) {
-            department = 'Registrar';
+          if (!email.includes('@mapua.edu.ph') && !email.includes('@mymail.mapua.edu.ph')) {
+            showError('Please use a Mapúa email address.');
+            return;
           }
 
-          const { data, error } = await supabase
-            .from('users')
-            .insert({
+          // Password strength validation
+          if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+            showError('Password must meet all requirements.');
+            return;
+          }
+
+          console.log('Validation passed, showing loading...');
+          showLoading();
+
+          try {
+            console.log('Attempting Supabase sign up...');
+            // Sign up with Supabase Auth
+            const { data, error } = await supabase.auth.signUp({
               email: email,
-              full_name: fullName,
-              role: role,
-              department: department,
-              status: 'active'
-            })
-            .select()
-            .single();
+              password: password,
+              options: {
+                data: {
+                  full_name: name
+                }
+              }
+            });
 
-          if (error) {
-            console.error('Error creating user profile:', error);
+            console.log('Supabase response:', { data, error });
+
+            if (error) {
+              throw error;
+            }
+
+            if (data.user) {
+              console.log('User created, creating profile...');
+              // Auto-create user profile
+              await createUserProfile(email, name);
+              showSuccess('Account created successfully! Please check your email for verification.');
+              
+              // Redirect to login after 3 seconds
+              setTimeout(() => {
+                window.location.href = 'login.html';
+              }, 3000);
+            } else {
+              showError('Please check your email for verification instructions.');
+            }
+          } catch (error) {
+            console.error('Sign up error:', error);
+            showError(error.message || 'An error occurred during sign up. Please try again.');
           }
-
-          return data;
-        } catch (error) {
-          console.error('Error in createUserProfile:', error);
-          return null;
         }
-      }
+
+        // Handle social sign-up
+        async function handleSocialSignUp(provider) {
+          showLoading();
+          
+          try {
+            const { error } = await supabase.auth.signInWithOAuth({
+              provider: provider === 'google' ? 'google' : 'azure'
+            });
+
+            if (error) {
+              throw error;
+            }
+          } catch (error) {
+            console.error('Social sign-up error:', error);
+            showError('Social sign-up is not configured. Please use email and password.');
+          }
+        }
+
+        // Create user profile in database
+        async function createUserProfile(email, fullName) {
+          try {
+            // Determine role based on email
+            let role = 'student';
+            if (email.includes('admin@') || email.includes('administrator@')) {
+              role = 'admin';
+            } else if (email.includes('staff@') || email.includes('faculty@')) {
+              role = 'staff';
+            }
+
+            // Determine department
+            let department = 'General';
+            if (email.includes('soit@') || email.includes('it@')) {
+              department = 'SOIT';
+            } else if (email.includes('doit@')) {
+              department = 'DOIT';
+            } else if (email.includes('registrar@')) {
+              department = 'Registrar';
+            }
+
+            const { data, error } = await supabase
+              .from('users')
+              .insert({
+                email: email,
+                full_name: fullName,
+                role: role,
+                department: department,
+                status: 'active'
+              })
+              .select()
+              .single();
+
+            if (error) {
+              console.error('Error creating user profile:', error);
+            }
+
+            return data;
+          } catch (error) {
+            console.error('Error in createUserProfile:', error);
+            return null;
+          }
+        }
+      });
     </script>
   </body>
 </html>
