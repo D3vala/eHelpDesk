@@ -472,9 +472,13 @@
 
       // Handle sign-up
       async function handleSignUp() {
+        console.log('Sign up button clicked');
+        
         const name = document.getElementById('signup-name').value.trim();
         const email = document.getElementById('signup-email').value.trim().toLowerCase();
         const password = document.getElementById('signup-password').value;
+
+        console.log('Form values:', { name, email, password });
 
         // Validation
         if (!name || !email || !password) {
@@ -493,9 +497,11 @@
           return;
         }
 
+        console.log('Validation passed, showing loading...');
         showLoading();
 
         try {
+          console.log('Attempting Supabase sign up...');
           // Sign up with Supabase Auth
           const { data, error } = await supabase.auth.signUp({
             email: email,
@@ -507,11 +513,14 @@
             }
           });
 
+          console.log('Supabase response:', { data, error });
+
           if (error) {
             throw error;
           }
 
           if (data.user) {
+            console.log('User created, creating profile...');
             // Auto-create user profile
             await createUserProfile(email, name);
             showSuccess('Account created successfully! Please check your email for verification.');
