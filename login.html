@@ -283,6 +283,13 @@
     </style>
   </head>
   <body>
+    <!-- LOADING OVERLAY -->
+    
+
+    <style>
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+
     <div class="page active" id="page-login">
       <div class="logo-block">
         <div class="logo-icon"><i class="fa-solid fa-headset"></i></div>
@@ -529,46 +536,95 @@
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
-      // --- SMART LOGIN ROUTING ---
-      function handleLogin() {
+      // --- SUPABASE LOGIN HANDLING ---
+      async function handleLogin() {
         const emailInput = document.getElementById("login-email");
         const passwordInput = document.getElementById("login-password");
         const email = emailInput.value.trim().toLowerCase();
         const password = passwordInput.value.trim();
 
-        // Check for admin credentials
+        if (!email || !password) {
+          alert("Please enter both email and password.");
+          return;
+        }
+
+        /* Show loading overlay
+        document.getElementById('loading-overlay').style.display = 'flex';*/
+
+        try {
+          // Import auth service
+          const { authUtils } = await import('./auth-service.js');
+          
+          // Attempt login
+          const result = await authUtils.signIn(email, password);
+          
+          if (result.success) {
+            // Redirect based on user role
+            const user = result.user;
+            const role = user.profile?.role || 'student';
+            
+            // Set legacy localStorage items for backward compatibility
+            localStorage.setItem("isLoggedIn", "true");
+            localStorage.setItem("userInitial", user.profile?.full_name.charAt(0).toUpperCase() || "U");
+            localStorage.setItem("userFullName", user.profile?.full_name || email);
+            localStorage.setItem("userEmail", email);
+            localStorage.setItem("userRole", role);
+
+            // Redirect to appropriate dashboard
+            if (role === 'admin') {
+              window.location.href = "admin/admin-dashboard.html";
+            } else if (role === 'staff') {
+              window.location.href = "staff/staff-dashboard.html";
+            } else {
+              window.location.href = "student/student-dashboard.html";
+            }
+          } else {
+            alert("Login failed: " + result.error);
+          }
+        } catch (error) {
+          console.error("Login error:", error);
+          alert("An error occurred during login. Please try again.");
+        } finally {
+          /* Hide loading overlay
+          document.getElementById('loading-overlay').style.display = 'none';*/
+        }
+      }
+
+      // --- DEMO LOGIN FOR BACKWARD COMPATIBILITY ---
+      function handleDemoLogin(email, password, role) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("userInitial", role === 'admin' ? "A" : "S");
+        localStorage.setItem("userFullName", role === 'admin' ? "Administrator" : (role === 'student' ? "Student User" : "Staff Member"));
+        localStorage.setItem("userEmail", email);
+        localStorage.setItem("userRole", role);
+
+        const dashboardPath = role === 'admin' ? "admin/admin-dashboard.html" : 
+                             role === 'staff' ? "staff/staff-dashboard.html" : 
+                             "student/student-dashboard.html";
+        
+        window.location.href = dashboardPath;
+      }
+
+      // --- SMART LOGIN ROUTING (DEPRECATED - FOR BACKWARD COMPATIBILITY) ---
+      function handleLegacyLogin() {
+        const emailInput = document.getElementById("login-email");
+        const passwordInput = document.getElementById("login-password");
+        const email = emailInput.value.trim().toLowerCase();
+        const password = passwordInput.value.trim();
+
+        // Demo accounts for backward compatibility
         if (email === "admin@mapua.edu.ph" && password === "admin123") {
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("userInitial", "A");
-          localStorage.setItem("userFullName", "Administrator");
-          localStorage.setItem("userEmail", email);
-          localStorage.setItem("userRole", "admin");
-          
-          window.location.href = "admin/admin-dashboard.html";
+          handleDemoLogin(email, password, 'admin');
           return;
         }
 
-        // Check for student credentials
         if (email === "student@mapua.edu.ph" && password === "student123") {
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("userInitial", "S");
-          localStorage.setItem("userFullName", "Student User");
-          localStorage.setItem("userEmail", email);
-          localStorage.setItem("userRole", "student");
-          
-          window.location.href = "student/student-dashboard.html";
+          handleDemoLogin(email, password, 'student');
           return;
         }
 
-        // Check for staff credentials
         if (email === "staff@mapua.edu.ph" && password === "staff123") {
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("userInitial", "S");
-          localStorage.setItem("userFullName", "Staff Member");
-          localStorage.setItem("userEmail", email);
-          localStorage.setItem("userRole", "staff");
-          
-          window.location.href = "staff/staff-dashboard.html";
+          handleDemoLogin(email, password, 'staff');
           return;
         }
 
@@ -577,15 +633,7 @@
           email.endsWith("@mymail.mapua.edu.ph") ||
           email.endsWith("@mapua.edu.ph")
         ) {
-          const namePart = email.split("@")[0];
-
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("userInitial", namePart.charAt(0).toUpperCase());
-          localStorage.setItem("userFullName", namePart);
-          localStorage.setItem("userEmail", email);
-          localStorage.setItem("userRole", "student");
-
-          window.location.href = "student/student-dashboard.html";
+          handleDemoLogin(email, password, 'student');
         } else {
           alert("Please use a Mapúa email.");
         }
