@@ -178,11 +178,17 @@ function navigateToFragment(section) {
   document.querySelectorAll(".fragment").forEach(fragment => {
     const isTarget = fragment.id === `fragment-${section}`;
     fragment.classList.toggle("active", isTarget);
+  });
+
+  // Ensure only the target fragment is active
+  document.querySelectorAll(".fragment").forEach(fragment => {
+    const isTarget = fragment.id === `fragment-${section}`;
     if (isTarget) {
       currentFragment = section;
       if (section === "dashboard") initDashboard();
       else if (section === "tickets") initTickets();
       else if (section === "users")   initUsers();
+      console.log(`Navigated to ${section} fragment.`);
     }
   });
 }
@@ -307,7 +313,7 @@ function initTickets() {
   setupTicketModal();
 }
 
-function setupTicketFilters() {
+async function setupTicketFilters() {
   const searchInput    = document.getElementById("search-input");
   const statusFilter   = document.getElementById("status-filter");
   const assigneeFilter = document.getElementById("assignee-filter");
@@ -327,30 +333,21 @@ function setupTicketFilters() {
   if (a) a.addEventListener("change", renderTicketTable);
 
   // Populate assignee filter dynamically from staff list
-  populateAssigneeFilter();
-}
-
-async function populateAssigneeFilter() {
-  const assigneeFilter = document.getElementById("assignee-filter");
-  if (!assigneeFilter) return;
-
-  try {
-    const staff = await getStaff();
-    const existing = Array.from(assigneeFilter.options).map(o => o.value);
-    
-    // Clear existing options except "All Assignees"
-    assigneeFilter.innerHTML = '<option value="All Assignees">All Assignees</option>';
-    
-    staff.forEach(st => {
-      if (!existing.includes(st.name)) {
-        const opt = document.createElement("option");
-        opt.value = st.name;
-        opt.textContent = st.name;
-        assigneeFilter.appendChild(opt);
-      }
-    });
-  } catch (error) {
-    console.error('Error populating assignee filter:', error);
+  if (a) {
+    try {
+      const staff = await getStaff();
+      const existing = Array.from(a.options).map(o => o.value);
+      staff.forEach(st => {
+        if (!existing.includes(st.name)) {
+          const opt = document.createElement("option");
+          opt.value = st.name;
+          opt.textContent = st.name;
+          a.appendChild(opt);
+        }
+      });
+    } catch (error) {
+      console.error('Error populating assignee filter:', error);
+    }
   }
 }
 
