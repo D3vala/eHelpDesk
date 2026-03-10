@@ -327,17 +327,30 @@ function setupTicketFilters() {
   if (a) a.addEventListener("change", renderTicketTable);
 
   // Populate assignee filter dynamically from staff list
-  if (a) {
-    const staff = getStaff();
-    const existing = Array.from(a.options).map(o => o.value);
+  populateAssigneeFilter();
+}
+
+async function populateAssigneeFilter() {
+  const assigneeFilter = document.getElementById("assignee-filter");
+  if (!assigneeFilter) return;
+
+  try {
+    const staff = await getStaff();
+    const existing = Array.from(assigneeFilter.options).map(o => o.value);
+    
+    // Clear existing options except "All Assignees"
+    assigneeFilter.innerHTML = '<option value="All Assignees">All Assignees</option>';
+    
     staff.forEach(st => {
       if (!existing.includes(st.name)) {
         const opt = document.createElement("option");
         opt.value = st.name;
         opt.textContent = st.name;
-        a.appendChild(opt);
+        assigneeFilter.appendChild(opt);
       }
     });
+  } catch (error) {
+    console.error('Error populating assignee filter:', error);
   }
 }
 
