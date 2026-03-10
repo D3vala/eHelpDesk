@@ -1,32 +1,107 @@
 // --- Data Model ---
-let staffData = [
-  { id: '1', name: 'Phoenix', email: 'kplguinto@mymail.mapua.edu.ph', dept: 'SOIT', tier: 'Level 0', status: 'Online' },
-  { id: '2', name: 'Dominic', email: 'mdpbacalla@mymail.mapua.edu.ph', dept: 'SOIT', tier: 'Level 1', status: 'Online' },
-  { id: '3', name: 'Chloie', email: 'cmmbronola@mymail.mapua.edu.ph', dept: 'SOIT', tier: 'Level 2', status: 'Online' },
-  { id: '4', name: 'Naveen', email: 'njpablo@mymail.mapua.edu.ph', dept: 'SOIT', tier: 'Level 3', status: 'Offline' }
-];
-
+let staffData = [];
 let editingStaffId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-  initData();
+// Import Supabase client
+import { supabase } from '../supabase-config.js';
+
+// Error handling helper
+function handleSupabaseError(error, operation) {
+  console.error(`Supabase ${operation} error:`, error);
+  return null;
+}
+
+// Staff API Functions
+async function getStaff() {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('role', 'staff')
+      .order('full_name', { ascending: true });
+    
+    if (error) {
+      return handleSupabaseError(error, 'fetch staff');
+    }
+    
+    // Transform data to match expected format
+    return (data || []).map(staff => ({
+      id: staff.id,
+      name: staff.full_name,
+      email: staff.email,
+      dept: staff.department,
+      tier: staff.tier || 'Level 0',
+      status: staff.status || 'Offline'
+    }));
+  } catch (error) {
+    return handleSupabaseError(error, 'fetch staff');
+  }
+}
+
+async function saveStaffData(staff) {
+  try {
+    // Convert back to users table format
+    const usersData = staff.map(s => ({
+      id: s.id,
+      full_name: s.name,
+      email: s.email,
+      department: s.dept,
+      role: 'staff',
+      tier: s.tier,
+      status: s.status
+    }));
+    
+    const { data, error } = await supabase
+      .from('users')
+      .upsert(usersData, { onConflict: ['id'] });
+    
+    if (error) {
+      return handleSupabaseError(error, 'save staff');
+    }
+    
+    return data;
+  } catch (error) {
+    return handleSupabaseError(error, 'save staff');
+  }
+}
+
+async function deleteStaffFromDB(staffId) {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', staffId);
+    
+    if (error) {
+      return handleSupabaseError(error, 'delete staff');
+    }
+    
+    return true;
+  } catch (error) {
+    return handleSupabaseError(error, 'delete staff');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await initData();
   initResizers();
   initFilters();
   renderTable();
 });
 
-// Sync Data with LocalStorage so Dashboard can read it
-function initData() {
-  const stored = localStorage.getItem('eHelpDesk_staffData');
-  if (stored) {
-    staffData = JSON.parse(stored);
-  } else {
-    // Save initial mock data if none exists
-    localStorage.setItem('eHelpDesk_staffData', JSON.stringify(staffData));
+// Initialize data from Supabase
+async function initData() {
+  try {
+    staffData = await getStaff();
+  } catch (error) {
+    console.error('Error initializing staff data:', error);
+    // Fallback to empty array if Supabase fails
+    staffData = [];
   }
 }
 
 function syncData() {
+  // For backward compatibility, still save to localStorage
   localStorage.setItem('eHelpDesk_staffData', JSON.stringify(staffData));
 }
 
@@ -112,11 +187,20 @@ function initFilters() {
 }
 
 // --- Actions Logic ---
-function deleteStaff(id) {
+async function deleteStaff(id) {
   if (confirm("Are you sure you want to remove this staff member?")) {
-    staffData = staffData.filter(s => s.id !== id);
-    syncData();
-    renderTable();
+    try {
+      // Delete from Supabase
+      await deleteStaffFromDB(id);
+      
+      // Update local data
+      staffData = staffData.filter(s => s.id !== id);
+      syncData();
+      renderTable();
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+      alert('Error deleting staff member. Please try again.');
+    }
   }
 }
 
@@ -149,7 +233,7 @@ function closeAddStaffModal() {
   document.getElementById('addStaffModal').classList.remove('active');
 }
 
-function saveStaff(e) {
+async function saveStaff(e) {
   e.preventDefault();
   
   const name = document.getElementById('newStaffName').value.trim();
@@ -157,31 +241,40 @@ function saveStaff(e) {
   const dept = document.getElementById('newStaffDept').value;
   const tier = document.getElementById('newStaffTier').value;
 
-  if (editingStaffId) {
-    // Edit existing
-    const staff = staffData.find(s => s.id === editingStaffId);
-    if (staff) {
-      staff.name = name;
-      staff.email = email;
-      staff.dept = dept;
-      staff.tier = tier;
+  try {
+    if (editingStaffId) {
+      // Edit existing
+      const staff = staffData.find(s => s.id === editingStaffId);
+      if (staff) {
+        staff.name = name;
+        staff.email = email;
+        staff.dept = dept;
+        staff.tier = tier;
+      }
+    } else {
+      // Add new
+      const newId = Date.now().toString();
+      staffData.push({
+        id: newId,
+        name: name,
+        email: email,
+        dept: dept,
+        tier: tier,
+        status: 'Offline' // Default status for newly created staff
+      });
     }
-  } else {
-    // Add new
-    const newId = Date.now().toString();
-    staffData.push({
-      id: newId,
-      name: name,
-      email: email,
-      dept: dept,
-      tier: tier,
-      status: 'Offline' // Default status for newly created staff
-    });
-  }
 
-  syncData(); // Save to local storage for Dashboard use
-  closeAddStaffModal();
-  renderTable();
+    // Save to Supabase
+    await saveStaffData(staffData);
+    
+    // Save to local storage for backward compatibility
+    syncData();
+    closeAddStaffModal();
+    renderTable();
+  } catch (error) {
+    console.error('Error saving staff:', error);
+    alert('Error saving staff member. Please try again.');
+  }
 }
 
 // --- Table Column Resizer Script ---

@@ -7,8 +7,9 @@ const loggedInAdmin = {
   lastName: "Pascual",
 };
 
-const TICKETS_KEY  = "eHelpDesk_tickets";
-const STAFF_KEY    = "eHelpDesk_staffData";
+// Supabase Tables
+const TICKETS_TABLE = "tickets";
+const USERS_TABLE = "users";
 
 // Tracks which ticket is currently open in the modal
 let activeTicketId = null;
@@ -20,34 +21,121 @@ let editingStaffId = null;
 let currentFragment = "dashboard";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LOCAL-STORAGE HELPERS
+// SUPABASE INTEGRATION
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getTickets() {
-  const raw = localStorage.getItem(TICKETS_KEY);
-  return raw ? JSON.parse(raw) : [];
+// Import Supabase client
+import { supabase } from '../supabase-config.js';
+
+// Error handling helper
+function handleSupabaseError(error, operation) {
+  console.error(`Supabase ${operation} error:`, error);
+  return null;
 }
 
-function saveTickets(tickets) {
-  localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
+// Tickets API Functions
+async function getTickets() {
+  try {
+    const { data, error } = await supabase
+      .from(TICKETS_TABLE)
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      return handleSupabaseError(error, 'fetch tickets');
+    }
+    
+    return data || [];
+  } catch (error) {
+    return handleSupabaseError(error, 'fetch tickets');
+  }
 }
 
-function getStaff() {
-  const raw = localStorage.getItem(STAFF_KEY);
-  if (raw) return JSON.parse(raw);
-  // Seed default staff on first load
-  const defaults = [
-    { id: "staff-1", name: "Phoenix",  email: "kplguinto@mymail.mapua.edu.ph", dept: "SOIT",      tier: "Level 0", status: "Online"  },
-    { id: "staff-2", name: "Dominic",  email: "dominic@mymail.mapua.edu.ph",   dept: "DOIT",      tier: "Level 1", status: "Online"  },
-    { id: "staff-3", name: "Chloie",   email: "chloie@mymail.mapua.edu.ph",    dept: "SOIT",      tier: "Level 2", status: "Online"  },
-    { id: "staff-4", name: "Naveen",   email: "naveen@mymail.mapua.edu.ph",    dept: "Registrar", tier: "Level 3", status: "Offline" },
-  ];
-  saveStaffData(defaults);
-  return defaults;
+async function saveTicket(ticket) {
+  try {
+    const { data, error } = await supabase
+      .from(TICKETS_TABLE)
+      .upsert(ticket, { onConflict: ['id'] });
+    
+    if (error) {
+      return handleSupabaseError(error, 'save ticket');
+    }
+    
+    return data;
+  } catch (error) {
+    return handleSupabaseError(error, 'save ticket');
+  }
 }
 
-function saveStaffData(staff) {
-  localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
+// Staff/Users API Functions
+async function getStaff() {
+  try {
+    const { data, error } = await supabase
+      .from(USERS_TABLE)
+      .select('*')
+      .eq('role', 'staff')
+      .order('full_name', { ascending: true });
+    
+    if (error) {
+      return handleSupabaseError(error, 'fetch staff');
+    }
+    
+    // Transform data to match expected format
+    return (data || []).map(staff => ({
+      id: staff.id,
+      name: staff.full_name,
+      email: staff.email,
+      dept: staff.department,
+      tier: staff.tier || 'Level 0',
+      status: staff.status || 'Offline'
+    }));
+  } catch (error) {
+    return handleSupabaseError(error, 'fetch staff');
+  }
+}
+
+async function saveStaffData(staff) {
+  try {
+    // Convert back to users table format
+    const usersData = staff.map(s => ({
+      id: s.id,
+      full_name: s.name,
+      email: s.email,
+      department: s.dept,
+      role: 'staff',
+      tier: s.tier,
+      status: s.status
+    }));
+    
+    const { data, error } = await supabase
+      .from(USERS_TABLE)
+      .upsert(usersData, { onConflict: ['id'] });
+    
+    if (error) {
+      return handleSupabaseError(error, 'save staff');
+    }
+    
+    return data;
+  } catch (error) {
+    return handleSupabaseError(error, 'save staff');
+  }
+}
+
+async function deleteStaffFromDB(staffId) {
+  try {
+    const { error } = await supabase
+      .from(USERS_TABLE)
+      .delete()
+      .eq('id', staffId);
+    
+    if (error) {
+      return handleSupabaseError(error, 'delete staff');
+    }
+    
+    return true;
+  } catch (error) {
+    return handleSupabaseError(error, 'delete staff');
+  }
 }
 
 function getInitials(name) {
@@ -122,59 +210,67 @@ function updateAdminProfile() {
   }
 }
 
-function updateDashboardKPIs() {
-  const tickets  = getTickets();
-  const total    = tickets.length;
-  const urgent   = tickets.filter(t => t.status === "Breached").length;
+async function updateDashboardKPIs() {
+  try {
+    const tickets = await getTickets();
+    const total   = tickets.length;
+    const urgent  = tickets.filter(t => t.status === "Breached").length;
 
-  // Quarterly volume — total tickets in localStorage
-  const qvEl = document.querySelector(".kpi-card:nth-child(1) .kpi-value");
-  if (qvEl) qvEl.textContent = total.toLocaleString();
+    // Quarterly volume — total tickets in Supabase
+    const qvEl = document.querySelector(".kpi-card:nth-child(1) .kpi-value");
+    if (qvEl) qvEl.textContent = total.toLocaleString();
 
-  // Urgent escalation count
-  const ueEl = document.querySelector(".kpi-card:nth-child(3) .kpi-value");
-  if (ueEl) ueEl.textContent = String(urgent).padStart(2, "0");
+    // Urgent escalation count
+    const ueEl = document.querySelector(".kpi-card:nth-child(3) .kpi-value");
+    if (ueEl) ueEl.textContent = String(urgent).padStart(2, "0");
+  } catch (error) {
+    console.error('Error updating dashboard KPIs:', error);
+  }
 }
 
-function renderWorkloadTable() {
+async function renderWorkloadTable() {
   const tbody = document.getElementById("workload-tbody");
   if (!tbody) return;
 
-  const staff   = getStaff();
-  const tickets = getTickets();
+  try {
+    const [staff, tickets] = await Promise.all([getStaff(), getTickets()]);
 
-  // Count active tickets per assignee name
-  const countMap = {};
-  tickets.forEach(t => {
-    const name = (t.assignee || "").split(" ")[0]; // first word
-    if (name && name !== "Unassigned") {
-      countMap[name] = (countMap[name] || 0) + 1;
+    // Count active tickets per assignee name
+    const countMap = {};
+    tickets.forEach(t => {
+      const name = (t.assignee || "").split(" ")[0]; // first word
+      if (name && name !== "Unassigned") {
+        countMap[name] = (countMap[name] || 0) + 1;
+      }
+    });
+
+    if (staff.length === 0) {
+      tbody.innerHTML = `<tr id="empty-state-row"><td colspan="4">No staff found for this level.</td></tr>`;
+      return;
     }
-  });
 
-  if (staff.length === 0) {
-    tbody.innerHTML = `<tr id="empty-state-row"><td colspan="4">No staff found for this level.</td></tr>`;
-    return;
+    tbody.innerHTML = staff.map(s => {
+      const count      = countMap[s.name] || 0;
+      const isOnline   = s.status === "Online";
+      const dotClass   = isOnline ? "online" : "offline";
+      const tierLabel  = s.tier;
+      return `
+        <tr class="workload-row" data-level="${tierLabel}">
+          <td>${s.name}</td>
+          <td>${tierLabel}</td>
+          <td>${count} Ticket${count !== 1 ? "s" : ""}</td>
+          <td>
+            <div class="status-indicator">
+              <div class="dot ${dotClass}"></div>
+              ${s.status}
+            </div>
+          </td>
+        </tr>`;
+    }).join("") + `<tr id="empty-state-row" style="display:none;"><td colspan="4">No staff found for this level.</td></tr>`;
+  } catch (error) {
+    console.error('Error rendering workload table:', error);
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">Error loading data.</td></tr>`;
   }
-
-  tbody.innerHTML = staff.map(s => {
-    const count      = countMap[s.name] || 0;
-    const isOnline   = s.status === "Online";
-    const dotClass   = isOnline ? "online" : "offline";
-    const tierLabel  = s.tier;
-    return `
-      <tr class="workload-row" data-level="${tierLabel}">
-        <td>${s.name}</td>
-        <td>${tierLabel}</td>
-        <td>${count} Ticket${count !== 1 ? "s" : ""}</td>
-        <td>
-          <div class="status-indicator">
-            <div class="dot ${dotClass}"></div>
-            ${s.status}
-          </div>
-        </td>
-      </tr>`;
-  }).join("") + `<tr id="empty-state-row" style="display:none;"><td colspan="4">No staff found for this level.</td></tr>`;
 }
 
 function setupWorkloadFilter() {
@@ -245,56 +341,61 @@ function setupTicketFilters() {
   }
 }
 
-function renderTicketTable() {
+async function renderTicketTable() {
   const tbody          = document.getElementById("ticket-table-body");
   if (!tbody) return;
 
-  const searchVal      = (document.getElementById("search-input")?.value    || "").toLowerCase();
-  const statusVal      = document.getElementById("status-filter")?.value    || "All Status";
-  const assigneeVal    = document.getElementById("assignee-filter")?.value  || "All Assignees";
+  try {
+    const searchVal      = (document.getElementById("search-input")?.value    || "").toLowerCase();
+    const statusVal      = document.getElementById("status-filter")?.value    || "All Status";
+    const assigneeVal    = document.getElementById("assignee-filter")?.value  || "All Assignees";
 
-  let tickets = getTickets();
+    let tickets = await getTickets();
 
-  // Apply filters
-  if (searchVal) {
-    tickets = tickets.filter(t =>
-      t.id.toLowerCase().includes(searchVal)      ||
-      t.subject.toLowerCase().includes(searchVal) ||
-      t.email.toLowerCase().includes(searchVal)
-    );
-  }
-  if (statusVal !== "All Status") {
-    tickets = tickets.filter(t => t.status === statusVal);
-  }
-  if (assigneeVal !== "All Assignees") {
-    tickets = tickets.filter(t => (t.assignee || "").includes(assigneeVal));
-  }
+    // Apply filters
+    if (searchVal) {
+      tickets = tickets.filter(t =>
+        t.id.toLowerCase().includes(searchVal)      ||
+        t.subject.toLowerCase().includes(searchVal) ||
+        t.email.toLowerCase().includes(searchVal)
+      );
+    }
+    if (statusVal !== "All Status") {
+      tickets = tickets.filter(t => t.status === statusVal);
+    }
+    if (assigneeVal !== "All Assignees") {
+      tickets = tickets.filter(t => (t.assignee || "").includes(assigneeVal));
+    }
 
-  if (tickets.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#888;">No tickets found.</td></tr>`;
-    return;
-  }
+    if (tickets.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#888;">No tickets found.</td></tr>`;
+      return;
+    }
 
-  tbody.innerHTML = tickets.map(t => {
-    const statusClass = t.status === "Resolved" ? "status-resolved"
-                      : t.status === "Breached"  ? "status-breached"
-                      : "status-progress";
-    const slaDisplay  = formatSLA(t.slaMs);
-    return `
-      <tr>
-        <td>${t.id}</td>
-        <td>${t.subject}</td>
-        <td>${t.email}</td>
-        <td>${t.assignee || "Unassigned"}</td>
-        <td>${slaDisplay}</td>
-        <td style="text-align:center;">
-          <span class="status-pill ${statusClass}">${t.status}</span>
-        </td>
-        <td style="text-align:center;">
-          <button class="btn-action" onclick="openTicketModal('${t.id}')">More Details</button>
-        </td>
-      </tr>`;
-  }).join("");
+    tbody.innerHTML = tickets.map(t => {
+      const statusClass = t.status === "Resolved" ? "status-resolved"
+                        : t.status === "Breached"  ? "status-breached"
+                        : "status-progress";
+      const slaDisplay  = formatSLA(t.slaMs);
+      return `
+        <tr>
+          <td>${t.id}</td>
+          <td>${t.subject}</td>
+          <td>${t.email}</td>
+          <td>${t.assignee || "Unassigned"}</td>
+          <td>${slaDisplay}</td>
+          <td style="text-align:center;">
+            <span class="status-pill ${statusClass}">${t.status}</span>
+          </td>
+          <td style="text-align:center;">
+            <button class="btn-action" onclick="openTicketModal('${t.id}')">More Details</button>
+          </td>
+        </tr>`;
+    }).join("");
+  } catch (error) {
+    console.error('Error rendering ticket table:', error);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:#888;">Error loading tickets.</td></tr>`;
+  }
 }
 
 function formatSLA(ms) {
@@ -315,81 +416,86 @@ function setupTicketModal() {
   // All modal functions are defined globally so inline onclick attributes work
 }
 
-window.openTicketModal = function(ticketId) {
-  const tickets = getTickets();
-  const ticket  = tickets.find(t => t.id === ticketId);
-  if (!ticket) return;
+window.openTicketModal = async function(ticketId) {
+  try {
+    const tickets = await getTickets();
+    const ticket  = tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
 
-  activeTicketId  = ticketId;
-  activeReplyMode = "sms";
+    activeTicketId  = ticketId;
+    activeReplyMode = "sms";
 
-  // Header
-  document.getElementById("modal-ticket-id").textContent      = ticket.id;
-  document.getElementById("modal-ticket-subject").textContent = `Subject: ${ticket.subject}`;
+    // Header
+    document.getElementById("modal-ticket-id").textContent      = ticket.id;
+    document.getElementById("modal-ticket-subject").textContent = `Subject: ${ticket.subject}`;
 
-  const badge = document.getElementById("modal-ticket-status-badge");
-  badge.textContent  = ticket.status;
-  badge.className    = "status-pill " + (ticket.status === "Resolved" ? "status-resolved"
-                                       : ticket.status === "Breached"  ? "status-breached"
-                                       : "status-progress");
+    const badge = document.getElementById("modal-ticket-status-badge");
+    badge.textContent  = ticket.status;
+    badge.className    = "status-pill " + (ticket.status === "Resolved" ? "status-resolved"
+                                         : ticket.status === "Breached"  ? "status-breached"
+                                         : "status-progress");
 
-  // Description
-  document.getElementById("modal-ticket-description").textContent = ticket.description || "No description provided.";
+    // Description
+    document.getElementById("modal-ticket-description").textContent = ticket.description || "No description provided.";
 
-  // Attachments
-  const attContainer = document.getElementById("modal-attachments-container");
-  if (ticket.attachments && ticket.attachments.length > 0) {
-    attContainer.style.display = "";
-    attContainer.innerHTML = `<h4>ATTACHMENTS</h4>` +
-      ticket.attachments.map(a =>
-        `<div style="font-size:13px; color:#555; margin-top:4px;">
-           <i class="fa-solid fa-paperclip"></i> ${a.name} <span style="color:#aaa;">(${a.size})</span>
-         </div>`
-      ).join("");
-  } else {
-    attContainer.style.display = "none";
+    // Attachments
+    const attContainer = document.getElementById("modal-attachments-container");
+    if (ticket.attachments && ticket.attachments.length > 0) {
+      attContainer.style.display = "";
+      attContainer.innerHTML = `<h4>ATTACHMENTS</h4>` +
+        ticket.attachments.map(a =>
+          `<div style="font-size:13px; color:#555; margin-top:4px;">
+             <i class="fa-solid fa-paperclip"></i> ${a.name} <span style="color:#aaa;">(${a.size})</span>
+           </div>`
+        ).join("");
+    } else {
+      attContainer.style.display = "none";
+    }
+
+    // Reporter
+    const reporter = ticket.reporter || {};
+    const reporterName = reporter.name || ticket.email || "Unknown";
+    document.getElementById("modal-reporter-initials").textContent = getInitials(reporterName);
+    document.getElementById("modal-reporter-name").textContent     = reporterName;
+    document.getElementById("modal-reporter-email").textContent    = ticket.email || "—";
+    document.getElementById("modal-reporter-phone").textContent    = reporter.phone || "—";
+
+    // Ticket details
+    const details = ticket.details || {};
+    document.getElementById("modal-detail-campus").textContent  = details.campus  || "—";
+    document.getElementById("modal-detail-dept").textContent    = details.dept    || "—";
+    document.getElementById("modal-detail-cc").textContent      = details.cc      || "—";
+    document.getElementById("modal-detail-created").textContent = details.created || "—";
+
+    // SLA timer display
+    document.getElementById("modal-sla-timer").textContent = formatSLA(ticket.slaMs);
+
+    // Status select
+    const statusSelect = document.getElementById("modal-status-select");
+    if (statusSelect) statusSelect.value = ticket.status || "In Progress";
+
+    // Assignee select — populate with staff names
+    const assigneeSelect = document.getElementById("modal-assignee-select");
+    if (assigneeSelect) {
+      const staff = await getStaff();
+      assigneeSelect.innerHTML = `<option value="Unassigned">Unassigned</option>` +
+        staff.map(s =>
+          `<option value="${s.name}" ${ticket.assignee === s.name ? "selected" : ""}>${s.name} (${s.tier}) — ${s.status}</option>`
+        ).join("");
+    }
+
+    // Reply tab state reset
+    switchReplyTab("sms");
+
+    // Render activity feed
+    renderActivityFeed(ticket);
+
+    // Show modal
+    document.getElementById("ticket-modal").classList.add("active");
+  } catch (error) {
+    console.error('Error opening ticket modal:', error);
+    alert('Error loading ticket details. Please try again.');
   }
-
-  // Reporter
-  const reporter = ticket.reporter || {};
-  const reporterName = reporter.name || ticket.email || "Unknown";
-  document.getElementById("modal-reporter-initials").textContent = getInitials(reporterName);
-  document.getElementById("modal-reporter-name").textContent     = reporterName;
-  document.getElementById("modal-reporter-email").textContent    = ticket.email || "—";
-  document.getElementById("modal-reporter-phone").textContent    = reporter.phone || "—";
-
-  // Ticket details
-  const details = ticket.details || {};
-  document.getElementById("modal-detail-campus").textContent  = details.campus  || "—";
-  document.getElementById("modal-detail-dept").textContent    = details.dept    || "—";
-  document.getElementById("modal-detail-cc").textContent      = details.cc      || "—";
-  document.getElementById("modal-detail-created").textContent = details.created || "—";
-
-  // SLA timer display
-  document.getElementById("modal-sla-timer").textContent = formatSLA(ticket.slaMs);
-
-  // Status select
-  const statusSelect = document.getElementById("modal-status-select");
-  if (statusSelect) statusSelect.value = ticket.status || "In Progress";
-
-  // Assignee select — populate with staff names
-  const assigneeSelect = document.getElementById("modal-assignee-select");
-  if (assigneeSelect) {
-    const staff = getStaff();
-    assigneeSelect.innerHTML = `<option value="Unassigned">Unassigned</option>` +
-      staff.map(s =>
-        `<option value="${s.name}" ${ticket.assignee === s.name ? "selected" : ""}>${s.name} (${s.tier}) — ${s.status}</option>`
-      ).join("");
-  }
-
-  // Reply tab state reset
-  switchReplyTab("sms");
-
-  // Render activity feed
-  renderActivityFeed(ticket);
-
-  // Show modal
-  document.getElementById("ticket-modal").classList.add("active");
 };
 
 window.closeModal = function() {
@@ -431,106 +537,121 @@ window.updateCharCount = function() {
   counter.style.color = remaining < 20 ? "#e53935" : "";
 };
 
-window.submitMessage = function() {
+window.submitMessage = async function() {
   if (!activeTicketId) return;
 
   const textarea = document.getElementById("reply-textarea");
   const text     = textarea.value.trim();
   if (!text) return;
 
-  const tickets = getTickets();
-  const ticket  = tickets.find(t => t.id === activeTicketId);
-  if (!ticket) return;
+  try {
+    const tickets = await getTickets();
+    const ticket  = tickets.find(t => t.id === activeTicketId);
+    if (!ticket) return;
 
-  const now     = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    const now     = new Date();
+    const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-  if (!ticket.activities) ticket.activities = [];
-  ticket.activities.push({
-    type:   activeReplyMode,
-    author: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
-    text:   text,
-    time:   timeStr,
-  });
+    if (!ticket.activities) ticket.activities = [];
+    ticket.activities.push({
+      type:   activeReplyMode,
+      author: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
+      text:   text,
+      time:   timeStr,
+    });
 
-  saveTickets(tickets);
-  textarea.value = "";
-  updateCharCount();
-  renderActivityFeed(ticket);
-};
-
-window.escalateTicket = function() {
-  if (!activeTicketId) return;
-
-  const tickets = getTickets();
-  const ticket  = tickets.find(t => t.id === activeTicketId);
-  if (!ticket) return;
-
-  if (ticket.status === "Resolved") {
-    alert("Cannot escalate a resolved ticket.");
-    return;
+    await saveTicket(ticket);
+    textarea.value = "";
+    updateCharCount();
+    renderActivityFeed(ticket);
+  } catch (error) {
+    console.error('Error submitting message:', error);
+    alert('Error saving message. Please try again.');
   }
-
-  const confirmed = confirm(`Escalate ticket ${activeTicketId}? This will mark it as Breached and flag it for urgent review.`);
-  if (!confirmed) return;
-
-  ticket.status = "Breached";
-
-  const now     = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-  if (!ticket.activities) ticket.activities = [];
-  ticket.activities.push({
-    type:   "system",
-    author: "System",
-    text:   `Ticket escalated to Breached by ${loggedInAdmin.firstName} ${loggedInAdmin.lastName}.`,
-    time:   timeStr,
-  });
-
-  saveTickets(tickets);
-
-  // Update modal badge
-  const badge = document.getElementById("modal-ticket-status-badge");
-  badge.textContent = "Breached";
-  badge.className   = "status-pill status-breached";
-
-  const statusSelect = document.getElementById("modal-status-select");
-  if (statusSelect) statusSelect.value = "Breached";
-
-  renderActivityFeed(ticket);
 };
 
-window.saveTicketUpdates = function() {
+window.escalateTicket = async function() {
   if (!activeTicketId) return;
 
-  const tickets        = getTickets();
-  const ticket         = tickets.find(t => t.id === activeTicketId);
-  if (!ticket) return;
+  try {
+    const tickets = await getTickets();
+    const ticket  = tickets.find(t => t.id === activeTicketId);
+    if (!ticket) return;
 
-  const newStatus   = document.getElementById("modal-status-select")?.value;
-  const newAssignee = document.getElementById("modal-assignee-select")?.value;
+    if (ticket.status === "Resolved") {
+      alert("Cannot escalate a resolved ticket.");
+      return;
+    }
 
-  const changes = [];
-  if (newStatus   && newStatus   !== ticket.status)   changes.push(`Status → ${newStatus}`);
-  if (newAssignee && newAssignee !== ticket.assignee) changes.push(`Assignee → ${newAssignee}`);
+    const confirmed = confirm(`Escalate ticket ${activeTicketId}? This will mark it as Breached and flag it for urgent review.`);
+    if (!confirmed) return;
 
-  ticket.status   = newStatus   || ticket.status;
-  ticket.assignee = newAssignee || ticket.assignee;
+    ticket.status = "Breached";
 
-  if (changes.length > 0) {
     const now     = new Date();
     const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
     if (!ticket.activities) ticket.activities = [];
     ticket.activities.push({
       type:   "system",
       author: "System",
-      text:   `Updated by ${loggedInAdmin.firstName}: ${changes.join(", ")}.`,
+      text:   `Ticket escalated to Breached by ${loggedInAdmin.firstName} ${loggedInAdmin.lastName}.`,
       time:   timeStr,
     });
-  }
 
-  saveTickets(tickets);
-  closeModal();
-  renderTicketTable();
+    await saveTicket(ticket);
+
+    // Update modal badge
+    const badge = document.getElementById("modal-ticket-status-badge");
+    badge.textContent = "Breached";
+    badge.className   = "status-pill status-breached";
+
+    const statusSelect = document.getElementById("modal-status-select");
+    if (statusSelect) statusSelect.value = "Breached";
+
+    renderActivityFeed(ticket);
+  } catch (error) {
+    console.error('Error escalating ticket:', error);
+    alert('Error escalating ticket. Please try again.');
+  }
+};
+
+window.saveTicketUpdates = async function() {
+  if (!activeTicketId) return;
+
+  try {
+    const tickets        = await getTickets();
+    const ticket         = tickets.find(t => t.id === activeTicketId);
+    if (!ticket) return;
+
+    const newStatus   = document.getElementById("modal-status-select")?.value;
+    const newAssignee = document.getElementById("modal-assignee-select")?.value;
+
+    const changes = [];
+    if (newStatus   && newStatus   !== ticket.status)   changes.push(`Status → ${newStatus}`);
+    if (newAssignee && newAssignee !== ticket.assignee) changes.push(`Assignee → ${newAssignee}`);
+
+    ticket.status   = newStatus   || ticket.status;
+    ticket.assignee = newAssignee || ticket.assignee;
+
+    if (changes.length > 0) {
+      const now     = new Date();
+      const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+      if (!ticket.activities) ticket.activities = [];
+      ticket.activities.push({
+        type:   "system",
+        author: "System",
+        text:   `Updated by ${loggedInAdmin.firstName}: ${changes.join(", ")}.`,
+        time:   timeStr,
+      });
+    }
+
+    await saveTicket(ticket);
+    closeModal();
+    renderTicketTable();
+  } catch (error) {
+    console.error('Error saving ticket updates:', error);
+    alert('Error saving ticket updates. Please try again.');
+  }
 };
 
 function renderActivityFeed(ticket) {
@@ -593,63 +714,68 @@ function setupUserFilters() {
   if (d) d.addEventListener("change", renderUserTable);
 }
 
-function renderUserTable() {
+async function renderUserTable() {
   const tbody  = document.getElementById("staffTableBody");
   if (!tbody) return;
 
-  const searchVal = (document.getElementById("searchInput")?.value       || "").toLowerCase();
-  const statusVal =  document.getElementById("statusFilter")?.value      || "All Status";
-  const deptVal   =  document.getElementById("departmentFilter")?.value  || "All Departments";
+  try {
+    const searchVal = (document.getElementById("searchInput")?.value       || "").toLowerCase();
+    const statusVal =  document.getElementById("statusFilter")?.value      || "All Status";
+    const deptVal   =  document.getElementById("departmentFilter")?.value  || "All Departments";
 
-  let staff = getStaff();
+    let staff = await getStaff();
 
-  if (searchVal) {
-    staff = staff.filter(s =>
-      s.name.toLowerCase().includes(searchVal) ||
-      s.email.toLowerCase().includes(searchVal)
-    );
-  }
-  if (statusVal !== "All Status") {
-    staff = staff.filter(s => s.status === statusVal);
-  }
-  if (deptVal !== "All Departments") {
-    staff = staff.filter(s => s.dept === deptVal);
-  }
+    if (searchVal) {
+      staff = staff.filter(s =>
+        s.name.toLowerCase().includes(searchVal) ||
+        s.email.toLowerCase().includes(searchVal)
+      );
+    }
+    if (statusVal !== "All Status") {
+      staff = staff.filter(s => s.status === statusVal);
+    }
+    if (deptVal !== "All Departments") {
+      staff = staff.filter(s => s.dept === deptVal);
+    }
 
-  if (staff.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:#888;">No staff found.</td></tr>`;
-    return;
-  }
+    if (staff.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:#888;">No staff found.</td></tr>`;
+      return;
+    }
 
-  tbody.innerHTML = staff.map(s => {
-    const isOnline   = s.status === "Online";
-    const dotClass   = isOnline ? "online" : "offline";
-    const initials   = getInitials(s.name);
-    return `
-      <tr>
-        <td>
-          <div class="staff-cell">
-            <div class="staff-avatar">${initials}</div>
-            <span class="staff-name">${s.name}</span>
-          </div>
-        </td>
-        <td>${s.email}</td>
-        <td>${s.dept}</td>
-        <td>${s.tier}</td>
-        <td>
-          <div class="availability ${dotClass}">
-            <i class="fa-solid fa-circle"></i>
-            <span class="avail-text">${s.status}</span>
-          </div>
-        </td>
-        <td>
-          <div class="action-group" style="justify-content:center;">
-            <button class="icon-btn" title="Edit Staff"   onclick="openEditStaffModal('${s.id}')"><i class="fa-solid fa-pencil"></i></button>
-            <button class="icon-btn" title="Delete Staff" onclick="deleteStaff('${s.id}')"><i class="fa-solid fa-trash"></i></button>
-          </div>
-        </td>
-      </tr>`;
-  }).join("");
+    tbody.innerHTML = staff.map(s => {
+      const isOnline   = s.status === "Online";
+      const dotClass   = isOnline ? "online" : "offline";
+      const initials   = getInitials(s.name);
+      return `
+        <tr>
+          <td>
+            <div class="staff-cell">
+              <div class="staff-avatar">${initials}</div>
+              <span class="staff-name">${s.name}</span>
+            </div>
+          </td>
+          <td>${s.email}</td>
+          <td>${s.dept}</td>
+          <td>${s.tier}</td>
+          <td>
+            <div class="availability ${dotClass}">
+              <i class="fa-solid fa-circle"></i>
+              <span class="avail-text">${s.status}</span>
+            </div>
+          </td>
+          <td>
+            <div class="action-group" style="justify-content:center;">
+              <button class="icon-btn" title="Edit Staff"   onclick="openEditStaffModal('${s.id}')"><i class="fa-solid fa-pencil"></i></button>
+              <button class="icon-btn" title="Delete Staff" onclick="deleteStaff('${s.id}')"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        </tr>`;
+    }).join("");
+  } catch (error) {
+    console.error('Error rendering user table:', error);
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:#888;">Error loading staff data.</td></tr>`;
+  }
 }
 
 function setupUserModal() {
@@ -686,7 +812,7 @@ window.closeAddStaffModal = function() {
   editingStaffId = null;
 };
 
-window.saveStaff = function(e) {
+window.saveStaff = async function(e) {
   e.preventDefault();
 
   const name  = document.getElementById("newStaffName").value.trim();
@@ -696,41 +822,51 @@ window.saveStaff = function(e) {
 
   if (!name || !email) return;
 
-  let staff = getStaff();
+  try {
+    let staff = await getStaff();
 
-  if (editingStaffId) {
-    // Edit existing
-    staff = staff.map(s =>
-      s.id === editingStaffId ? { ...s, name, email, dept, tier } : s
-    );
-  } else {
-    // Add new
-    const newMember = {
-      id:     "staff-" + Date.now(),
-      name,
-      email,
-      dept,
-      tier,
-      status: "Offline",
-    };
-    staff.push(newMember);
+    if (editingStaffId) {
+      // Edit existing
+      staff = staff.map(s =>
+        s.id === editingStaffId ? { ...s, name, email, dept, tier } : s
+      );
+    } else {
+      // Add new
+      const newMember = {
+        id:     "staff-" + Date.now(),
+        name,
+        email,
+        dept,
+        tier,
+        status: "Offline",
+      };
+      staff.push(newMember);
+    }
+
+    await saveStaffData(staff);
+    closeAddStaffModal();
+    renderUserTable();
+  } catch (error) {
+    console.error('Error saving staff:', error);
+    alert('Error saving staff member. Please try again.');
   }
-
-  saveStaffData(staff);
-  closeAddStaffModal();
-  renderUserTable();
 };
 
-window.deleteStaff = function(staffId) {
-  const staff  = getStaff();
-  const member = staff.find(s => s.id === staffId);
-  if (!member) return;
+window.deleteStaff = async function(staffId) {
+  try {
+    const staff  = await getStaff();
+    const member = staff.find(s => s.id === staffId);
+    if (!member) return;
 
-  const confirmed = confirm(`Remove ${member.name} from the staff list?`);
-  if (!confirmed) return;
+    const confirmed = confirm(`Remove ${member.name} from the staff list?`);
+    if (!confirmed) return;
 
-  saveStaffData(staff.filter(s => s.id !== staffId));
-  renderUserTable();
+    await saveStaffData(staff.filter(s => s.id !== staffId));
+    renderUserTable();
+  } catch (error) {
+    console.error('Error deleting staff:', error);
+    alert('Error deleting staff member. Please try again.');
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

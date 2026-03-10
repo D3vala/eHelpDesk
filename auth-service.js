@@ -263,7 +263,7 @@ class AuthService {
         return this.currentUser;
     }
 
-    // Save session to localStorage
+    // Save session to localStorage (for backward compatibility)
     saveSession() {
         if (this.currentUser) {
             localStorage.setItem('supabase_session', JSON.stringify({
@@ -281,7 +281,7 @@ class AuthService {
         localStorage.removeItem('supabase_session');
     }
 
-    // Restore session from localStorage
+    // Restore session from localStorage (for backward compatibility)
     restoreSession() {
         try {
             const sessionData = localStorage.getItem('supabase_session');

@@ -1,67 +1,72 @@
-// --- DATABASE MOCK (seed data used only when localStorage is empty) ---
-const TICKET_SEED = [
-  {
-    id: "#260219-001",
-    subject: "Password Reset Request",
-    email: "kgabriel@mymail.mapua.edu.ph",
-    assignee: "Phoenix (L0)",
-    slaMs: 81910840, // ~22.75 hours
-    status: "In Progress",
-    description: "User is locked out of their cardinal edge account after multiple failed login attempts.\n\nNeeds a manual password reset and verification link sent to their phone as soon as possible.",
-    reporter: { name: "Kevin Gabriel", phone: "+1 (555) 019-2834" },
-    details: { campus: "Main Campus", dept: "DOIT", cc: "none", created: "Feb 19, 2026, 10:44 AM" },
-    attachments: [ { name: "login_error_screenshot.png", size: "1.2 MB" } ],
-    activities: [
-      { type: "internal", author: "Phoenix (L0)", text: "Checked active directory. Account is indeed locked. Reaching out to user now.", time: "Today, 10:50 AM" },
-      { type: "system", author: "System", text: "Ticket assigned to Phoenix (L0)", time: "Today, 10:45 AM" }
-    ]
-  },
-  {
-    id: "#260219-002",
-    subject: "Software License Issue",
-    email: "mlopez@mymail.mapua.edu.ph",
-    assignee: "Dominic (L1)",
-    slaMs: -8130120, // Negative for breached
-    status: "Breached",
-    description: "AutoCAD license has expired on lab computer.",
-    reporter: { name: "Maria Lopez", phone: "+1 (555) 019-3333" },
-    details: { campus: "Makati Campus", dept: "Architecture", cc: "none", created: "Feb 18, 2026, 09:00 AM" },
-    attachments: [],
-    activities: [
-      { type: "system", author: "System", text: "SLA Breached.", time: "Yesterday, 02:00 PM" }
-    ]
-  },
-  {
-    id: "#260219-003",
-    subject: "Cardinal Edge Integration",
-    email: "zsantos@mymail.mapua.edu.ph",
-    assignee: "Chloie (L2)",
-    slaMs: 86110000, 
-    status: "In Progress",
-    description: "API key needs resetting for Canvas integration.",
-    reporter: { name: "Zach Santos", phone: "+1 (555) 019-9999" },
-    details: { campus: "Main Campus", dept: "DOIT", cc: "admin@mapua.edu", created: "Feb 19, 2026, 11:00 AM" },
-    attachments: [],
-    activities: []
+// --- Import Supabase client ---
+import { supabase } from '../supabase-config.js';
+
+// --- Error handling helper ---
+function handleSupabaseError(error, operation) {
+  console.error(`Supabase ${operation} error:`, error);
+  return null;
+}
+
+// --- Tickets API Functions ---
+async function getTickets() {
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      return handleSupabaseError(error, 'fetch tickets');
+    }
+    
+    return data || [];
+  } catch (error) {
+    return handleSupabaseError(error, 'fetch tickets');
   }
-];
+}
+
+async function saveTicket(ticket) {
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .upsert(ticket, { onConflict: ['id'] });
+    
+    if (error) {
+      return handleSupabaseError(error, 'save ticket');
+    }
+    
+    return data;
+  } catch (error) {
+    return handleSupabaseError(error, 'save ticket');
+  }
+}
 
 // --- LOCALSTORAGE PERSISTENCE ---
 let tickets = [];
 
-function initData() {
-  const storedTickets = localStorage.getItem('eHelpDesk_tickets');
-  if (storedTickets) {
-    tickets = JSON.parse(storedTickets);
-  } else {
-    // Seed with mock data on first load
-    tickets = JSON.parse(JSON.stringify(TICKET_SEED));
-    localStorage.setItem('eHelpDesk_tickets', JSON.stringify(tickets));
+// Initialize data from Supabase
+async function initData() {
+  try {
+    tickets = await getTickets();
+  } catch (error) {
+    console.error('Error initializing tickets:', error);
+    // Fallback to empty array if Supabase fails
+    tickets = [];
   }
 }
 
-function syncTickets() {
+async function syncTickets() {
+  // For backward compatibility, still save to localStorage
   localStorage.setItem('eHelpDesk_tickets', JSON.stringify(tickets));
+  
+  // Also save to Supabase
+  try {
+    for (const ticket of tickets) {
+      await saveTicket(ticket);
+    }
+  } catch (error) {
+    console.error('Error syncing tickets to Supabase:', error);
+  }
 }
 
 // Build staff list from localStorage (synced with user-management.js)
@@ -110,8 +115,8 @@ function getStatusClass(status) {
 }
 
 // --- INIT ---
-document.addEventListener('DOMContentLoaded', () => {
-  initData();
+document.addEventListener('DOMContentLoaded', async () => {
+  await initData();
 
   // Event Listeners for filters
   document.getElementById('status-filter').addEventListener('change', renderTable);
@@ -123,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initResizers();
   
   // SLA Timer Loop
-  setInterval(() => {
+  setInterval(async () => {
     tickets.forEach(t => {
       if (t.status !== 'Resolved') {
         t.slaMs -= 60; // Approximate reduction per tick
@@ -350,7 +355,7 @@ function renderActivities(ticket) {
 }
 
 // --- ESCALATE BUTTON LOGIC ---
-function escalateTicket() {
+async function escalateTicket() {
   const t = tickets.find(x => x.id === currentOpenTicketId);
   if (!t) return;
 
@@ -365,7 +370,7 @@ function escalateTicket() {
   };
 
   t.activities.unshift(newAct);
-  syncTickets(); // Persist escalation to localStorage
+  await syncTickets(); // Persist escalation to Supabase
   renderActivities(t);
 }
 
@@ -400,7 +405,7 @@ function updateCharCount() {
   }
 }
 
-function submitMessage() {
+async function submitMessage() {
   const textarea = document.getElementById('reply-textarea');
   const text = textarea.value.trim();
   if (!text) return;
@@ -418,13 +423,13 @@ function submitMessage() {
   // Add to beginning of array so newest is at top
   t.activities.unshift(newAct);
   
-  syncTickets(); // Persist reply to localStorage
+  await syncTickets(); // Persist reply to Supabase
   textarea.value = '';
   updateCharCount();
   renderActivities(t);
 }
 
-function saveTicketUpdates() {
+async function saveTicketUpdates() {
   const t = tickets.find(x => x.id === currentOpenTicketId);
   if (!t) return;
 
@@ -435,7 +440,7 @@ function saveTicketUpdates() {
   t.assignee = newAssignee;
 
   // Note: If changed to Resolved, the global interval ignores it and stops ticking down.
-  syncTickets(); // Persist status/assignee change to localStorage
+  await syncTickets(); // Persist status/assignee change to Supabase
 
   renderTable();
   closeModal();
