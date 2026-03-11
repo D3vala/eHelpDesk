@@ -553,6 +553,17 @@
           return;
         }
 
+        // --- Check demo accounts first (no Supabase call needed) ---
+        const demoAccounts = {
+          "admin@mapua.edu.ph":   { password: "admin123",   role: "admin" },
+          "staff@mapua.edu.ph":   { password: "staff123",   role: "staff" },
+          "student@mapua.edu.ph": { password: "student123", role: "student" },
+        };
+        if (demoAccounts[email] && demoAccounts[email].password === password) {
+          handleDemoLogin(email, password, demoAccounts[email].role);
+          return;
+        }
+
         // Show loading overlay
         document.getElementById('loading-overlay').style.display = 'flex';
 
@@ -597,9 +608,11 @@
 
       // --- DEMO LOGIN FOR BACKWARD COMPATIBILITY ---
       function handleDemoLogin(email, password, role) {
+        const nameMap = { admin: "Administrator", staff: "Staff Member", student: "Student User" };
+        const fullName = nameMap[role] || "User";
         localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("userInitial", role === 'admin' ? "A" : "S");
-        localStorage.setItem("userFullName", role === 'admin' ? "Administrator" : (role === 'student' ? "Student User" : "Staff Member"));
+        localStorage.setItem("userInitial", fullName.charAt(0).toUpperCase());
+        localStorage.setItem("userFullName", fullName);
         localStorage.setItem("userEmail", email);
         localStorage.setItem("userRole", role);
 

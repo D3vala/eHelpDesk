@@ -7,6 +7,7 @@ function handleLogout() {
     localStorage.clear(); // This wipes ALL login data at once
     window.location.href = "../login.html"; // Redirect to login page
 }
+window.handleLogout = handleLogout;
 
 // 2. UI INITIALIZATION
 document.addEventListener("DOMContentLoaded", async () => {
@@ -183,8 +184,7 @@ function switchTab(tabType) {
     
     loadTickets();
 }
-
-// Handle search functionality
+window.switchTab = switchTab;
 function handleSearch() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     // Implementation would filter tickets based on search term
