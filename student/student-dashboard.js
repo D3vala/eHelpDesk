@@ -390,8 +390,6 @@ async function createTicket(event) {
   const userEmail    = localStorage.getItem("userEmail")    || "unknown@mapua.edu.ph";
   const ccEmails     = ccsRaw.split(',').map(e => e.trim()).filter(Boolean);
 
-  const ccEmails = ccs.split(',').map(e => e.trim()).filter(Boolean);
-
   const newTicket = {
     subject:          subject,
     description:      description,
