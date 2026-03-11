@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>eHelpDesk Dashboard</title>
     <link rel="stylesheet" href="staff-dashboard.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <!-- Supabase UMD build — works on file:// without a local server -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script>
+      window.supabase = supabase.createClient(
+        'https://ultmtnqbzckmyqffevjv.supabase.co',
+        'sb_publishable_R9_srXtrNCUeemY4PHiU4w_yP4S5cCJ'
+      );
+    </script>
   </head>
   <body>
     <div class="header-top-section">
@@ -25,7 +34,6 @@
             <input type="text" id="searchInput" placeholder="Search Tickets" />
           </div>
           <div class="auth-buttons" id="auth-section">
-            <a href="../student/student-dashboard.html" class="btn btn-black">Create Ticket</a>
             <div
               class="profile-container"
               id="profile-menu-wrapper"
@@ -143,25 +151,5 @@
       </div>
     </main>
 
-    <script type="module" src="staff-dashboard.js"></script>
-    <script>
-      // Fallback: defined outside module so it always works regardless of module load status
-      function handleLogout() {
-        localStorage.clear();
-        window.location.href = "../login.html";
-      }
-      function switchTab(tabType) {
-        var ccdTab = document.getElementById('tab-ccd');
-        var myTab = document.getElementById('tab-my');
-        if (!ccdTab || !myTab) return;
-        if (tabType === 'ccd') {
-          ccdTab.classList.add('active-tab'); ccdTab.classList.remove('inactive-tab');
-          myTab.classList.add('inactive-tab'); myTab.classList.remove('active-tab');
-        } else {
-          myTab.classList.add('active-tab'); myTab.classList.remove('inactive-tab');
-          ccdTab.classList.add('inactive-tab'); ccdTab.classList.remove('active-tab');
-        }
-        if (typeof window._loadTickets === 'function') window._loadTickets();
-      }
-    </script>
+    <script src="staff-dashboard.js"></script>
 </html>

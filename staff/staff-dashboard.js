@@ -1,224 +1,189 @@
-// Import Supabase client
-import { supabase } from '../supabase-config.js';
+// staff-dashboard.js — uses window.supabase initialised in HTML (no ES module imports needed)
 
-// 1. GLOBAL LOGOUT FUNCTION - Must be outside any blocks
+// 1. GLOBAL FUNCTIONS (accessible from inline onclick handlers)
 function handleLogout() {
-    console.log("Logging out...");
-    localStorage.clear(); // This wipes ALL login data at once
-    window.location.href = "../login.html"; // Redirect to login page
+    localStorage.clear();
+    window.location.href = '../login.html';
 }
 window.handleLogout = handleLogout;
 
+function switchTab(tabType) {
+    const ccdTab = document.getElementById('tab-ccd');
+    const myTab = document.getElementById('tab-my');
+    if (!ccdTab || !myTab) return;
+    if (tabType === 'ccd') {
+        ccdTab.classList.add('active-tab');    ccdTab.classList.remove('inactive-tab');
+        myTab.classList.add('inactive-tab');   myTab.classList.remove('active-tab');
+    } else {
+        myTab.classList.add('active-tab');     myTab.classList.remove('inactive-tab');
+        ccdTab.classList.add('inactive-tab');  ccdTab.classList.remove('active-tab');
+    }
+    applyFiltersAndRender();
+}
+window.switchTab = switchTab;
+
 // 2. UI INITIALIZATION
-document.addEventListener("DOMContentLoaded", async () => {
-    await initAuth();
+document.addEventListener('DOMContentLoaded', async () => {
+    initAuth();
     initEventListeners();
     await loadTickets();
 });
 
-// Initialize authentication state
-async function initAuth() {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-    const userInitial = localStorage.getItem("userInitial");
-    const userFullName = localStorage.getItem("userFullName");
-    const userEmail = localStorage.getItem("userEmail");
-    const userRole = localStorage.getItem("userRole");
+function initAuth() {
+    const userInitial  = localStorage.getItem('userInitial');
+    const userFullName = localStorage.getItem('userFullName');
+    const userEmail    = localStorage.getItem('userEmail');
 
-    const authSection = document.getElementById("auth-section");
-    const loginBtn = document.getElementById("login-nav-btn");
-    const profileWrapper = document.getElementById("profile-menu-wrapper");
+    const loginBtn      = document.getElementById('login-nav-btn');
+    const profileWrapper = document.getElementById('profile-menu-wrapper');
 
-    if (userInitial && authSection) {
-        if (loginBtn) loginBtn.style.display = "none";
+    if (userInitial) {
+        if (loginBtn) loginBtn.style.display = 'none';
         if (profileWrapper) {
-            profileWrapper.style.display = "block";
-
-            // Inject Initial
-            const circle = profileWrapper.querySelector(".user-profile-circle");
-            if (!circle) {
-                const newCircle = document.createElement("div");
-                newCircle.className = "user-profile-circle";
-                newCircle.innerText = userInitial;
-                newCircle.onclick = (e) => {
+            profileWrapper.style.display = 'block';
+            if (!profileWrapper.querySelector('.user-profile-circle')) {
+                const circle = document.createElement('div');
+                circle.className = 'user-profile-circle';
+                circle.innerText = userInitial;
+                circle.onclick = (e) => {
                     e.stopPropagation();
-                    document
-                        .getElementById("dropdown-menu")
-                        .classList.toggle("show");
+                    const menu = document.getElementById('dropdown-menu');
+                    if (menu) menu.classList.toggle('show');
                 };
-                profileWrapper.prepend(newCircle);
+                profileWrapper.prepend(circle);
             }
-
-            // Inject Name and Email
-            document.getElementById("user-display-name").innerText =
-                userFullName || "User";
-            document.getElementById("user-display-email").innerText =
-                userEmail || "";
+            const nameEl  = document.getElementById('user-display-name');
+            const emailEl = document.getElementById('user-display-email');
+            if (nameEl)  nameEl.innerText  = userFullName || 'User';
+            if (emailEl) emailEl.innerText = userEmail    || '';
         }
     }
 }
 
-// Initialize event listeners
 function initEventListeners() {
-    // Search functionality
     const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', handleSearch);
-    }
+    if (searchInput) searchInput.addEventListener('input', applyFiltersAndRender);
 
-    // Status filter
     const statusDropdown = document.querySelector('.status-dropdown');
-    if (statusDropdown) {
-        statusDropdown.addEventListener('change', handleStatusFilter);
-    }
+    if (statusDropdown) statusDropdown.addEventListener('change', applyFiltersAndRender);
 
-    // Tab switching
-    const tabItems = document.querySelectorAll('.tab-item');
-    tabItems.forEach(tab => {
-        tab.addEventListener('click', () => switchTab(tab.id === 'tab-ccd' ? 'ccd' : 'my'));
-    });
-
-    // Close menu when clicking outside
-    window.addEventListener("click", () => {
-        const menu = document.getElementById("dropdown-menu");
-        if (menu) menu.classList.remove("show");
+    window.addEventListener('click', (e) => {
+        const menu = document.getElementById('dropdown-menu');
+        if (menu && !e.target.closest('.profile-container')) menu.classList.remove('show');
     });
 }
 
-// Tickets API Functions
+// 3. DATA
+let allTicketsCache = [];
+
 async function getTickets() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await window.supabase
             .from('tickets')
             .select('*')
             .order('created_at', { ascending: false });
-        
-        if (error) {
-            console.error('Error fetching tickets:', error);
-            return [];
-        }
-        
+        if (error) { console.error('Error fetching tickets:', error); return []; }
         return data || [];
-    } catch (error) {
-        console.error('Error fetching tickets:', error);
+    } catch (err) {
+        console.error('Error fetching tickets:', err);
         return [];
     }
 }
 
-// Load and render tickets
 async function loadTickets() {
     try {
-        const tickets = await getTickets();
-        renderTickets(tickets);
-        updateStats(tickets);
-    } catch (error) {
-        console.error('Error loading tickets:', error);
+        allTicketsCache = await getTickets();
+        applyFiltersAndRender();
+    } catch (err) {
+        console.error('Error loading tickets:', err);
     }
 }
 window._loadTickets = loadTickets;
 
-// Render tickets in the table
+// 4. FILTERING & RENDERING
+function applyFiltersAndRender() {
+    const searchTerm   = (document.getElementById('searchInput')?.value || '').toLowerCase();
+    const statusFilter = document.querySelector('.status-dropdown')?.value || '';
+    const tabType      = getCurrentTab();
+
+    let tickets = filterTicketsByTab(allTicketsCache, tabType);
+
+    if (statusFilter) {
+        const statusMap = { open: 'Open', progress: 'In Progress', closed: 'Resolved' };
+        const mapped = statusMap[statusFilter];
+        if (mapped) tickets = tickets.filter(t => t.status === mapped);
+    }
+
+    if (searchTerm) {
+        tickets = tickets.filter(t =>
+            (t.id           && String(t.id).toLowerCase().includes(searchTerm)) ||
+            (t.subject      && t.subject.toLowerCase().includes(searchTerm))    ||
+            (t.reporter_name && t.reporter_name.toLowerCase().includes(searchTerm)) ||
+            (t.email        && t.email.toLowerCase().includes(searchTerm))
+        );
+    }
+
+    renderTickets(tickets);
+    updateStats(tickets);
+}
+
 function renderTickets(tickets) {
     const tbody = document.getElementById('table-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
-    
     if (tickets.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="no-records">No Records to Display</td></tr>';
         return;
     }
-
-    const tabType = getCurrentTab();
-    const filteredTickets = filterTicketsByTab(tickets, tabType);
-    
-    filteredTickets.forEach(ticket => {
+    tickets.forEach(ticket => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${ticket.id}</td>
-            <td>${ticket.subject}</td>
+            <td>${ticket.subject || ''}</td>
             <td>${formatDate(ticket.created_at)}</td>
-            <td>${ticket.reporter_name || ticket.email}</td>
-            <td><span class="status-pill ${getStatusClass(ticket.status)}">${ticket.status}</span></td>
+            <td>${ticket.reporter_name || ticket.email || 'Unknown'}</td>
+            <td><span class="status-pill ${getStatusClass(ticket.status)}">${ticket.status || ''}</span></td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-// Filter tickets based on current tab
 function filterTicketsByTab(tickets, tabType) {
-    const userEmail = localStorage.getItem("userEmail");
-    const userFullName = localStorage.getItem("userFullName");
-    
+    const userEmail    = (localStorage.getItem('userEmail')    || '').toLowerCase();
+    const userFullName = (localStorage.getItem('userFullName') || '').toLowerCase();
     if (tabType === 'ccd') {
-        // Tickets where user is CC'd
-        return tickets.filter(ticket => 
-            ticket.cc && ticket.cc.includes(userEmail)
-        );
+        return tickets.filter(t => t.cc && t.cc.toLowerCase().includes(userEmail));
     } else {
-        // My tickets - assigned to user
-        return tickets.filter(ticket => 
-            ticket.assignee && ticket.assignee.includes(userFullName)
-        );
+        return tickets.filter(t => t.assignee && t.assignee.toLowerCase().includes(userFullName));
     }
 }
 
-// Get current active tab
 function getCurrentTab() {
     const ccdTab = document.getElementById('tab-ccd');
-    return ccdTab.classList.contains('active-tab') ? 'ccd' : 'my';
+    return (ccdTab && ccdTab.classList.contains('active-tab')) ? 'ccd' : 'my';
 }
 
-// Switch between tabs
-function switchTab(tabType) {
-    const ccdTab = document.getElementById('tab-ccd');
-    const myTab = document.getElementById('tab-my');
-    
-    if (tabType === 'ccd') {
-        ccdTab.classList.add('active-tab');
-        ccdTab.classList.remove('inactive-tab');
-        myTab.classList.add('inactive-tab');
-        myTab.classList.remove('active-tab');
-    } else {
-        myTab.classList.add('active-tab');
-        myTab.classList.remove('inactive-tab');
-        ccdTab.classList.add('inactive-tab');
-        ccdTab.classList.remove('active-tab');
-    }
-    
-    loadTickets();
-}
-window.switchTab = switchTab;
-function handleSearch() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    // Implementation would filter tickets based on search term
-    loadTickets();
+// 5. STATS
+function updateStats(filteredTickets) {
+    const allCount     = filteredTickets.length;
+    const pendingCount = filteredTickets.filter(t => t.status === 'In Progress').length;
+    const closedCount  = filteredTickets.filter(t => t.status === 'Resolved').length;
+    const c1 = document.querySelector('.stat-card:nth-child(1) .stat-number');
+    const c2 = document.querySelector('.stat-card:nth-child(2) .stat-number');
+    const c3 = document.querySelector('.stat-card:nth-child(3) .stat-number');
+    if (c1) c1.textContent = allCount;
+    if (c2) c2.textContent = pendingCount;
+    if (c3) c3.textContent = closedCount;
 }
 
-// Handle status filter
-function handleStatusFilter() {
-    const statusFilter = document.querySelector('.status-dropdown').value;
-    // Implementation would filter tickets based on status
-    loadTickets();
-}
-
-// Update statistics
-function updateStats(tickets) {
-    const allCount = tickets.length;
-    const pendingCount = tickets.filter(t => t.status === 'In Progress').length;
-    const closedCount = tickets.filter(t => t.status === 'Resolved').length;
-    
-    document.querySelector('.stat-card:nth-child(1) .stat-number').textContent = allCount;
-    document.querySelector('.stat-card:nth-child(2) .stat-number').textContent = pendingCount;
-    document.querySelector('.stat-card:nth-child(3) .stat-number').textContent = closedCount;
-}
-
-// Utility functions
+// 6. UTILITIES
 function getStatusClass(status) {
     if (status === 'In Progress') return 'status-progress';
-    if (status === 'Breached') return 'status-breached';
-    if (status === 'Resolved') return 'status-resolved';
+    if (status === 'Breached')    return 'status-breached';
+    if (status === 'Resolved')    return 'status-resolved';
     return 'status-progress';
 }
 
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return dateString ? new Date(dateString).toLocaleDateString() : '';
 }
