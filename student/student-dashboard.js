@@ -1,5 +1,4 @@
-// Import Supabase client
-import { supabase } from '../supabase-config.js';
+// Uses window.supabase initialised in HTML (no ES module imports needed)
 
 // 1. DYNAMIC USER LOGO & AUTH LOGIC
 document.addEventListener("DOMContentLoaded", () => {
@@ -199,7 +198,7 @@ function handleLogout() {
 // Tickets API Functions
 async function getTickets() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await window.supabase
       .from('tickets')
       .select('*')
       .order('created_at', { ascending: false });
@@ -218,7 +217,7 @@ async function getTickets() {
 
 async function saveTicket(ticket) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await window.supabase
       .from('tickets')
       .insert(ticket);
     
@@ -236,7 +235,7 @@ async function saveTicket(ticket) {
 
 async function updateTicket(ticketId, updates) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await window.supabase
       .from('tickets')
       .update(updates)
       .eq('id', ticketId);
@@ -255,7 +254,7 @@ async function updateTicket(ticketId, updates) {
 
 async function deleteTicketFromDB(ticketId) {
   try {
-    const { error } = await supabase
+    const { error } = await window.supabase
       .from('tickets')
       .delete()
       .eq('id', ticketId);

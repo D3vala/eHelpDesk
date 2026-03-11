@@ -9,6 +9,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
+    <!-- Supabase UMD build — works on file:// without a local server -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script>
+      window.supabase = supabase.createClient(
+        'https://ultmtnqbzckmyqffevjv.supabase.co',
+        'sb_publishable_R9_srXtrNCUeemY4PHiU4w_yP4S5cCJ'
+      );
+    </script>
   </head>
   <body>
     <div class="header-top-section">
@@ -474,6 +482,6 @@
       </div>
     </div>
 
-    <script type="module" src="student-dashboard.js"></script>
+    <script src="student-dashboard.js"></script>
   </body>
 </html>
