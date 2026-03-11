@@ -25,7 +25,7 @@ let currentFragment = "dashboard";
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Import Supabase client
-import { supabase } from '../supabase-config.js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../supabase-config.js';
 
 // Error handling helper
 function handleSupabaseError(error, operation) {
@@ -91,6 +91,43 @@ async function getStaff() {
     }));
   } catch (error) {
     return handleSupabaseError(error, 'fetch staff');
+  }
+}
+
+// Get all users (for user selection)
+async function getAllUsers() {
+  try {
+    const { data, error } = await supabase
+      .from(USERS_TABLE)
+      .select('*')
+      .order('full_name', { ascending: true });
+    
+    if (error) {
+      return handleSupabaseError(error, 'fetch all users');
+    }
+    
+    return data || [];
+  } catch (error) {
+    return handleSupabaseError(error, 'fetch all users');
+  }
+}
+
+// Get non-admin users (for user selection)
+async function getNonAdminUsers() {
+  try {
+    const { data, error } = await supabase
+      .from(USERS_TABLE)
+      .select('*')
+      .neq('role', 'admin') // Exclude admin users
+      .order('full_name', { ascending: true });
+    
+    if (error) {
+      return handleSupabaseError(error, 'fetch non-admin users');
+    }
+    
+    return data || [];
+  } catch (error) {
+    return handleSupabaseError(error, 'fetch non-admin users');
   }
 }
 
@@ -790,14 +827,70 @@ async function renderUserTable() {
 
 function setupUserModal() {
   // All modal functions are defined globally — nothing extra to wire here
+  
+  // Setup user search functionality
+  const userSearchInput = document.getElementById("userSearchInput");
+  const userSearchResults = document.getElementById("userSearchResults");
+  const selectedUserInfo = document.getElementById("selectedUserInfo");
+  const selectedUserName = document.getElementById("selectedUserName");
+  const selectedUserEmail = document.getElementById("selectedUserEmail");
+  
+  if (userSearchInput) {
+    userSearchInput.addEventListener("input", async (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      
+      if (searchTerm.length < 2) {
+        userSearchResults.classList.remove("show");
+        userSearchResults.innerHTML = "";
+        return;
+      }
+      
+      try {
+        const nonAdminUsers = await getNonAdminUsers();
+        const filteredUsers = nonAdminUsers.filter(user => 
+          user.full_name.toLowerCase().includes(searchTerm) ||
+          user.email.toLowerCase().includes(searchTerm)
+        );
+        
+        if (filteredUsers.length === 0) {
+          userSearchResults.innerHTML = '<div style="padding: 12px 16px; color: #888; font-size: 12px; z-index: 3001;">No non-admin users found</div>';
+          userSearchResults.classList.add("show");
+          return;
+        }
+        
+        userSearchResults.innerHTML = filteredUsers.map(user => `
+          <div class="user-search-result-item" onclick="selectUser('${user.id}', '${user.full_name}', '${user.email}', '${user.role || 'user'}')">
+            <div class="user-search-result-name">${user.full_name}</div>
+            <div class="user-search-result-email">${user.email}</div>
+            <div class="user-search-result-role">${user.role || 'user'}</div>
+          </div>
+        `).join("");
+        
+        userSearchResults.classList.add("show");
+      } catch (error) {
+        console.error('Error searching users:', error);
+      }
+    });
+    
+    // Hide search results when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!userSearchInput.contains(e.target) && !userSearchResults.contains(e.target)) {
+        userSearchResults.classList.remove("show");
+      }
+    }, true); // Use capture phase to ensure proper event handling
+  }
 }
 
 window.openAddStaffModal = function() {
   editingStaffId = null;
-  document.getElementById("modalTitle").textContent     = "Add New Staff";
-  document.getElementById("saveStaffBtn").textContent   = "Add Staff";
   document.getElementById("addStaffForm").reset();
   document.getElementById("addStaffModal").classList.add("active");
+  
+  // Clear user search results and selected user info
+  const userSearchResults = document.getElementById("userSearchResults");
+  const selectedUserInfo = document.getElementById("selectedUserInfo");
+  if (userSearchResults) userSearchResults.classList.remove("show");
+  if (selectedUserInfo) selectedUserInfo.classList.remove("show");
 };
 
 window.openEditStaffModal = async function(staffId) {
@@ -807,15 +900,15 @@ window.openEditStaffModal = async function(staffId) {
     if (!member) return;
 
     editingStaffId = staffId;
-    document.getElementById("modalTitle").textContent     = "Edit Staff";
-    document.getElementById("saveStaffBtn").textContent   = "Save Changes";
+    
+    // Set the form values for edit modal
+    document.getElementById("editStaffId").value = member.id;
+    document.getElementById("editStaffName").value = member.name;
+    document.getElementById("editStaffEmail").value = member.email;
+    document.getElementById("editStaffDept").value = member.dept;
+    document.getElementById("editStaffTier").value = member.tier;
 
-    document.getElementById("newStaffName").value  = member.name;
-    document.getElementById("newStaffEmail").value = member.email;
-    document.getElementById("newStaffDept").value  = member.dept;
-    document.getElementById("newStaffTier").value  = member.tier;
-
-    document.getElementById("addStaffModal").classList.add("active");
+    document.getElementById("editStaffModal").classList.add("active");
   } catch (error) {
     console.error('Error opening edit staff modal:', error);
     alert('Error loading staff data. Please try again.');
@@ -824,39 +917,58 @@ window.openEditStaffModal = async function(staffId) {
 
 window.closeAddStaffModal = function() {
   document.getElementById("addStaffModal").classList.remove("active");
+};
+
+window.closeEditStaffModal = function() {
+  document.getElementById("editStaffModal").classList.remove("active");
   editingStaffId = null;
 };
 
 window.saveStaff = async function(e) {
   e.preventDefault();
 
-  const name  = document.getElementById("newStaffName").value.trim();
-  const email = document.getElementById("newStaffEmail").value.trim();
-  const dept  = document.getElementById("newStaffDept").value;
-  const tier  = document.getElementById("newStaffTier").value;
+  const dept  = document.getElementById("addStaffDept").value;
+  const tier  = document.getElementById("addStaffTier").value;
+  const userId = document.getElementById("selectedUserId")?.value;
 
-  if (!name || !email) return;
+  if (!userId || !dept || !tier) {
+    alert('Please select a user and fill in all required fields.');
+    return;
+  }
 
   try {
+    // Get the selected user from the database
+    const { data: selectedUser, error: userError } = await supabase
+      .from(USERS_TABLE)
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !selectedUser) {
+      alert('Error loading selected user. Please try again.');
+      return;
+    }
+
     let staff = await getStaff();
 
-    if (editingStaffId) {
-      // Edit existing
-      staff = staff.map(s =>
-        s.id === editingStaffId ? { ...s, name, email, dept, tier } : s
-      );
-    } else {
-      // Add new
-      const newMember = {
-        id:     "staff-" + Date.now(),
-        name,
-        email,
-        dept,
-        tier,
-        status: "Offline",
-      };
-      staff.push(newMember);
+    // Check if user is already staff
+    const existingStaff = staff.find(s => s.id === userId);
+    if (existingStaff) {
+      alert('This user is already a staff member.');
+      return;
     }
+
+    // Add new staff using the selected user's data
+    const newMember = {
+      id: selectedUser.id,
+      name: selectedUser.full_name,
+      email: selectedUser.email,
+      dept: dept,
+      tier: tier,
+      status: "active",  // Use 'active' instead of 'Offline' to match DB constraint
+      role: 'staff'      // Ensure role is set to staff
+    };
+    staff.push(newMember);
 
     await saveStaffData(staff);
     closeAddStaffModal();
@@ -865,7 +977,32 @@ window.saveStaff = async function(e) {
     console.error('Error saving staff:', error);
     alert('Error saving staff member. Please try again.');
   }
-};
+}
+
+window.saveEditStaff = async function(e) {
+  e.preventDefault();
+
+  const dept  = document.getElementById("editStaffDept").value;
+  const tier  = document.getElementById("editStaffTier").value;
+
+  if (!editingStaffId) return;
+
+  try {
+    let staff = await getStaff();
+
+    // Edit existing staff
+    staff = staff.map(s =>
+      s.id === editingStaffId ? { ...s, dept, tier } : s
+    );
+
+    await saveStaffData(staff);
+    closeEditStaffModal();
+    renderUserTable();
+  } catch (error) {
+    console.error('Error saving staff:', error);
+    alert('Error saving staff member. Please try again.');
+  }
+}
 
 window.deleteStaff = async function(staffId) {
   try {
@@ -873,14 +1010,72 @@ window.deleteStaff = async function(staffId) {
     const member = staff.find(s => s.id === staffId);
     if (!member) return;
 
-    const confirmed = confirm(`Remove ${member.name} from the staff list?`);
+    const confirmed = confirm(`Remove ${member.name} from the staff list? This will change their role to student.`);
     if (!confirmed) return;
 
-    await saveStaffData(staff.filter(s => s.id !== staffId));
+    // Instead of deleting, change the role to student
+    const { error } = await supabase
+      .from(USERS_TABLE)
+      .update({ 
+        role: 'student',
+        department: null,
+        tier: null,
+        status: 'active'
+      })
+      .eq('id', staffId);
+    
+    if (error) {
+      throw error;
+    }
+
+    // Refresh the staff table
     renderUserTable();
   } catch (error) {
-    console.error('Error deleting staff:', error);
-    alert('Error deleting staff member. Please try again.');
+    console.error('Error removing staff member:', error);
+    alert('Error removing staff member. Please try again.');
+  }
+};
+
+// Global function to select a user from search results
+window.selectUser = function(userId, fullName, email, role) {
+  const userSearchResults = document.getElementById("userSearchResults");
+  const selectedUserInfo = document.getElementById("selectedUserInfo");
+  const selectedUserName = document.getElementById("selectedUserName");
+  const selectedUserEmail = document.getElementById("selectedUserEmail");
+  
+  // Update selected user info display
+  selectedUserName.textContent = `Selected User: ${fullName}`;
+  selectedUserEmail.textContent = `Email: ${email}`;
+  selectedUserInfo.classList.add("show");
+  
+  // Hide search results
+  userSearchResults.classList.remove("show");
+  
+  // Store selected user data in a hidden field or data attribute for form submission
+  const form = document.getElementById("addStaffForm");
+  if (form) {
+    // Create hidden inputs to store user data
+    let userIdInput = document.getElementById("selectedUserId");
+    if (!userIdInput) {
+      userIdInput = document.createElement("input");
+      userIdInput.type = "hidden";
+      userIdInput.id = "selectedUserId";
+      userIdInput.name = "selectedUserId";
+      form.appendChild(userIdInput);
+    }
+    userIdInput.value = userId;
+    
+    // Autofill the name and email textboxes
+    const nameInput = document.getElementById("newStaffName");
+    const emailInput = document.getElementById("newStaffEmail");
+    
+    if (nameInput) {
+      nameInput.value = fullName;
+    }
+    
+    if (emailInput) {
+      emailInput.value = email;
+    }
   }
 };
 
