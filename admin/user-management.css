@@ -344,7 +344,7 @@ body {
   background: #ffffff;
   border-radius: 16px;
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 48px rgba(0,0,0,0.15);
@@ -357,7 +357,7 @@ body {
 }
 
 .modal-header {
-  padding: 24px 32px;
+  padding: 32px 40px;
   border-bottom: 1px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
@@ -365,70 +365,81 @@ body {
 }
 
 .modal-header h2 {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 800;
+  margin: 0;
 }
 
 .btn-close {
   background: transparent;
   border: none;
-  font-size: 20px;
+  font-size: 24px;
   color: #888;
   cursor: pointer;
   transition: color 0.2s;
+  padding: 8px;
+  border-radius: 8px;
 }
 
-.btn-close:hover { color: #111; }
+.btn-close:hover { 
+  color: #111; 
+  background: #f8f8f8;
+}
 
 .modal-body {
-  padding: 32px;
+  padding: 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 28px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  margin: 10px;
 }
 
 .form-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #333;
+  letter-spacing: 0.2px;
 }
 
 .form-input, .form-select {
   width: 100%;
-  padding: 12px 16px;
+  padding: 16px 20px;
   border: 1px solid #eaeaea;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: 600;
   font-family: 'Inter', sans-serif;
   color: #111;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+  min-height: 50px;
 }
 
 .form-input:focus, .form-select:focus {
   border-color: #111;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
+  transform: translateY(-1px);
 }
 
 .form-select {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2212%22%20height%3D%228%22%20viewBox%3D%220%200%2012%208%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M1%201.5L6%206.5L11%201.5%22%20stroke%3D%22%23111111%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");
   background-repeat: no-repeat;
-  background-position: right 16px center;
+  background-position: right 20px center;
 }
 
 .modal-footer {
-  padding: 24px 32px;
+  padding: 32px 40px;
   border-top: 1px solid #f0f0f0;
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 16px;
   background: #fafafa;
   border-bottom-left-radius: 16px;
   border-bottom-right-radius: 16px;
@@ -461,6 +472,143 @@ body {
 }
 
 .btn-save:hover { background: #333; }
+
+/* --- EDIT STAFF MODAL STYLES --- */
+.level-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.current-level-display {
+  background: #f8f8f8;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: center;
+}
+
+.current-level-display span {
+  font-size: 18px;
+  font-weight: 800;
+  color: #111;
+}
+
+.level-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.level-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.level-btn:hover {
+  background: #f8f8f8;
+  border-color: #111;
+}
+
+.level-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f0f0f0;
+  border-color: #e0e0e0;
+}
+
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-field input {
+  flex: 1;
+  padding-right: 45px; /* Make room for toggle button */
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.toggle-password:hover {
+  color: #111;
+}
+
+.password-hint {
+  color: #888;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Level button states */
+.level-btn.increase-enabled:hover {
+  background: #e8f5e9;
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+.level-btn.decrease-enabled:hover {
+  background: #fff3e0;
+  border-color: #ff9800;
+  color: #ef6c00;
+}
+
+/* Modal overlay animation improvements */
+.modal-overlay {
+  transition: opacity 0.3s ease;
+}
+
+.modal-container {
+  transform: translateY(-20px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-overlay.active .modal-container {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Form validation styles */
+.form-input:invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-input:valid {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Password field styling */
+.password-field input:invalid {
+  border-color: #ef4444;
+}
+
+.password-field input:valid {
+  border-color: #10b981;
+}
 
 
 /* =========================================

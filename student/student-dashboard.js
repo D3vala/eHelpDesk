@@ -381,38 +381,27 @@ function formatDate(dateString) {
 // CRUD Operations
 async function createTicket(event) {
   event.preventDefault();
-
-  const campusEl  = document.getElementById("campusSelect");
-  const deptEl    = document.getElementById("deptSelect");
-  const ccsInput  = document.querySelector('input[placeholder="Select CCs"]');
-  const subjectEl = document.querySelector('input[placeholder="Enter subject"]');
-  const editorEl  = document.getElementById("editor");
-
-  const campus      = campusEl?.value  || '';
-  const dept        = deptEl?.value    || '';
-  const ccsRaw      = ccsInput?.value  || '';
-  const subject     = subjectEl?.value || '';
-  const placeholder = "Enter description. Type / to open a list";
-  const description = (editorEl?.innerText || '').trim();
-
-  if (!campus)  { alert('Please select a campus.'); return; }
-  if (!dept)    { alert('Please select a department.'); return; }
-  if (!subject) { alert('Please enter a subject.'); return; }
-
+  const campus = document.querySelector("select:first-of-type")?.value || "Not Specified";
+  const dept = document.querySelectorAll("select")[1]?.value || "Not Specified";
+  const ccs = document.querySelector('input[placeholder="Select CCs"]')?.value || "none";
+  const subject = document.querySelector('input[placeholder="Enter subject"]')?.value || "No Subject";
+  const description = document.getElementById("editor")?.innerText || "";
   const userFullName = localStorage.getItem("userFullName") || "Anonymous";
   const userEmail    = localStorage.getItem("userEmail")    || "unknown@mapua.edu.ph";
   const ccEmails     = ccsRaw.split(',').map(e => e.trim()).filter(Boolean);
 
+  const ccEmails = ccs.split(',').map(e => e.trim()).filter(Boolean);
+
   const newTicket = {
-    subject:         subject,
-    description:     description === placeholder ? '' : description,
-    reporter_email:  userEmail,
-    reporter_name:   userFullName,
-    campus_location: campus,
-    department:      dept,
-    cc_emails:       ccEmails,
-    status:          'open',
-    priority:        'medium',
+    subject:          subject,
+    description:      description,
+    reporter_email:   userEmail,
+    reporter_name:    userFullName,
+    campus_location:  campus,
+    department:       dept,
+    cc_emails:        ccEmails,
+    status:           'open',
+    priority:         'medium',
     sla_target_hours: 24
   };
 
@@ -423,12 +412,11 @@ async function createTicket(event) {
       return;
     }
 
-    // Upload any attached files
+    // Upload any attached files to Supabase Storage and record in attachments table
     if (uploadedFiles.length > 0) {
-      await uploadTicketAttachments(saved.id, uploadedFiles, userEmail);
+      await uploadTicketAttachments(saved.id, uploadedFiles);
       uploadedFiles = [];
-      const fileDisplayArea = document.getElementById('file-display-area');
-      if (fileDisplayArea) fileDisplayArea.innerHTML = '';
+      renderFileList();
     }
 
     loadTickets();
@@ -443,44 +431,47 @@ async function createTicket(event) {
   }
 }
 
-async function uploadTicketAttachments(ticketId, files, uploaderEmail) {
+async function uploadTicketAttachments(ticketId, files) {
+  const userEmail = localStorage.getItem('userEmail') || 'unknown';
   for (const file of files) {
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      // Sanitise filename to avoid path issues
+      const safeName  = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const storagePath = `${ticketId}/${Date.now()}_${safeName}`;
 
-      // Step 1 — try to upload to Supabase Storage
-      let fileUrl = '';
-      const { error: uploadError } = await window.supabase.storage
+      const { data: uploadData, error: uploadErr } = await window.supabase
+        .storage
         .from('ticket-attachments')
         .upload(storagePath, file, { upsert: false });
 
-      if (uploadError) {
-        console.warn('Storage upload failed for', file.name, '— saving metadata only.', uploadError.message);
-      } else {
-        const { data: urlData } = window.supabase.storage
-          .from('ticket-attachments')
-          .getPublicUrl(storagePath);
-        fileUrl = urlData?.publicUrl || '';
+      if (uploadErr) {
+        console.error('File upload error:', uploadErr);
+        continue;
       }
 
-      // Step 2 — always insert the DB record so the attachment appears in the staff modal
-      const { error: dbError } = await window.supabase
+      // Get public URL
+      const { data: urlData } = window.supabase
+        .storage
+        .from('ticket-attachments')
+        .getPublicUrl(storagePath);
+
+      const fileUrl = urlData?.publicUrl || '';
+
+      // Insert row in attachments table
+      const { error: insertErr } = await window.supabase
         .from('attachments')
         .insert({
           ticket_id:   ticketId,
           file_name:   file.name,
-          file_url:    fileUrl || 'pending',
+          file_url:    fileUrl,
           file_size:   file.size,
           file_type:   file.type,
-          uploaded_by: uploaderEmail
+          uploaded_by: userEmail
         });
 
-      if (dbError) {
-        console.error('Attachment DB insert error for', file.name, dbError);
-      }
+      if (insertErr) console.error('Attachment insert error:', insertErr);
     } catch (err) {
-      console.error('Unexpected error uploading', file.name, err);
+      console.error('Unexpected upload error:', err);
     }
   }
 }
