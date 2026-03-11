@@ -273,17 +273,44 @@ async function loadStaffAttachments(ticketId) {
     data.forEach(att => {
         const hasUrl = att.file_url && att.file_url !== 'pending';
         const isDataUrl = hasUrl && att.file_url.startsWith('data:');
-        const pill = document.createElement(hasUrl ? 'a' : 'div');
+        const isImage = att.file_type && att.file_type.startsWith('image/');
+        const isPdf = att.file_type === 'application/pdf';
+        const canPreview = hasUrl && (isImage || isPdf);
+
+        const pill = document.createElement('div');
         pill.className  = 'attachment-pill';
-        if (hasUrl) {
-            pill.href     = att.file_url;
-            pill.download = att.file_name;
-            if (!isDataUrl) {
-                pill.target = '_blank';
-                pill.rel    = 'noopener noreferrer';
-            }
+
+        const nameSpan = document.createElement('span');
+        nameSpan.innerHTML = `<i class="fa-solid ${getStaffFileIcon(att.file_type)}"></i> ${att.file_name} <span style="color:#aaa;">(${formatStaffFileSize(att.file_size)})</span>`;
+
+        const actions = document.createElement('span');
+        actions.className = 'pill-actions';
+
+        if (canPreview) {
+            const viewBtn = document.createElement('button');
+            viewBtn.className = 'pill-btn pill-view';
+            viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i> View';
+            viewBtn.addEventListener('click', () => openAttachmentPreview(att.file_url, att.file_name, att.file_type));
+            actions.appendChild(viewBtn);
         }
-        pill.innerHTML  = `<i class="fa-solid ${getStaffFileIcon(att.file_type)}"></i> ${att.file_name} <span style="color:#aaa;">(${formatStaffFileSize(att.file_size)})</span>${!hasUrl ? ' <span style="color:#f97316;font-size:10px;">no download link</span>' : ''}`;
+
+        if (hasUrl) {
+            const dlBtn = document.createElement('a');
+            dlBtn.className = 'pill-btn pill-dl';
+            dlBtn.href = att.file_url;
+            dlBtn.download = att.file_name;
+            if (!isDataUrl) { dlBtn.target = '_blank'; dlBtn.rel = 'noopener noreferrer'; }
+            dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+            actions.appendChild(dlBtn);
+        } else {
+            const noLink = document.createElement('span');
+            noLink.style.cssText = 'color:#f97316;font-size:10px;';
+            noLink.textContent = 'no download link';
+            actions.appendChild(noLink);
+        }
+
+        pill.appendChild(nameSpan);
+        pill.appendChild(actions);
         container.appendChild(pill);
     });
 }
@@ -417,4 +444,25 @@ function formatStaffFileSize(bytes) {
     if (bytes < 1024)              return `${bytes} B`;
     if (bytes < 1024 * 1024)       return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function openAttachmentPreview(url, name, type) {
+    const modal = document.getElementById('att-preview-modal');
+    const img = document.getElementById('att-preview-img');
+    const iframe = document.getElementById('att-preview-iframe');
+    document.getElementById('att-preview-name').textContent = name;
+    const dl = document.getElementById('att-preview-dl');
+    dl.href = url; dl.download = name;
+    img.style.display = 'none'; img.src = '';
+    iframe.style.display = 'none'; iframe.src = '';
+    if (type && type.startsWith('image/')) { img.src = url; img.style.display = 'block'; }
+    else if (type === 'application/pdf') { iframe.src = url; iframe.style.display = 'block'; }
+    modal.style.display = 'flex';
+}
+
+function closeAttachmentPreview() {
+    const modal = document.getElementById('att-preview-modal');
+    modal.style.display = 'none';
+    document.getElementById('att-preview-img').src = '';
+    document.getElementById('att-preview-iframe').src = '';
 }

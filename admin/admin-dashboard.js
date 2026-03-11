@@ -458,20 +458,15 @@ window.openTicketModal = async function(ticketId) {
       attData.forEach(att => {
         const hasUrl = att.file_url && att.file_url !== 'pending';
         const isDataUrl = hasUrl && att.file_url.startsWith('data:');
-        const pill = document.createElement(hasUrl ? 'a' : 'div');
+        const isImage = att.file_type && att.file_type.startsWith('image/');
+        const isPdf = att.file_type === 'application/pdf';
+        const canPreview = hasUrl && (isImage || isPdf);
+        const pill = document.createElement('div');
         pill.className = 'attachment-pill';
-        if (hasUrl) {
-          pill.href = att.file_url;
-          pill.download = att.file_name;
-          if (!isDataUrl) {
-            pill.target = '_blank';
-            pill.rel = 'noopener noreferrer';
-          }
-        }
         const iconClass = !att.file_type ? 'fa-file'
-          : att.file_type.startsWith('image/')        ? 'fa-file-image'
-          : att.file_type === 'application/pdf'        ? 'fa-file-pdf'
-          : att.file_type.includes('word')             ? 'fa-file-word'
+          : isImage                                                                              ? 'fa-file-image'
+          : isPdf                                                                                ? 'fa-file-pdf'
+          : att.file_type.includes('word')                                                      ? 'fa-file-word'
           : (att.file_type.includes('sheet') || att.file_type.includes('excel') || att.file_type.includes('csv')) ? 'fa-file-excel'
           : 'fa-file';
         const sizeLabel = att.file_size
@@ -479,7 +474,33 @@ window.openTicketModal = async function(ticketId) {
             : att.file_size < 1048576 ? `${(att.file_size / 1024).toFixed(1)} KB`
             : `${(att.file_size / 1048576).toFixed(1)} MB`)
           : '';
-        pill.innerHTML = `<i class="fa-solid ${iconClass}"></i> ${att.file_name}${sizeLabel ? ` <span style="color:#aaa;">(${sizeLabel})</span>` : ''}${!hasUrl ? ' <span style="color:#f97316;font-size:10px;">no download link</span>' : ''}`;
+        const nameSpan = document.createElement('span');
+        nameSpan.innerHTML = `<i class="fa-solid ${iconClass}"></i> ${att.file_name}${sizeLabel ? ` <span style="color:#aaa;">(${sizeLabel})</span>` : ''}`;
+        const actions = document.createElement('span');
+        actions.className = 'pill-actions';
+        if (canPreview) {
+          const viewBtn = document.createElement('button');
+          viewBtn.className = 'pill-btn pill-view';
+          viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i> View';
+          viewBtn.addEventListener('click', () => openAttachmentPreview(att.file_url, att.file_name, att.file_type));
+          actions.appendChild(viewBtn);
+        }
+        if (hasUrl) {
+          const dlBtn = document.createElement('a');
+          dlBtn.className = 'pill-btn pill-dl';
+          dlBtn.href = att.file_url;
+          dlBtn.download = att.file_name;
+          if (!isDataUrl) { dlBtn.target = '_blank'; dlBtn.rel = 'noopener noreferrer'; }
+          dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+          actions.appendChild(dlBtn);
+        } else {
+          const noLink = document.createElement('span');
+          noLink.style.cssText = 'color:#f97316;font-size:10px;';
+          noLink.textContent = 'no download link';
+          actions.appendChild(noLink);
+        }
+        pill.appendChild(nameSpan);
+        pill.appendChild(actions);
         attContainer.appendChild(pill);
       });
     }
@@ -534,6 +555,29 @@ window.closeModal = function() {
   document.getElementById("ticket-modal").classList.remove("active");
   activeTicketId = null;
 };
+
+function openAttachmentPreview(url, name, type) {
+  const modal = document.getElementById('att-preview-modal');
+  const img = document.getElementById('att-preview-img');
+  const iframe = document.getElementById('att-preview-iframe');
+  document.getElementById('att-preview-name').textContent = name;
+  const dl = document.getElementById('att-preview-dl');
+  dl.href = url; dl.download = name;
+  img.style.display = 'none'; img.src = '';
+  iframe.style.display = 'none'; iframe.src = '';
+  if (type && type.startsWith('image/')) { img.src = url; img.style.display = 'block'; }
+  else if (type === 'application/pdf') { iframe.src = url; iframe.style.display = 'block'; }
+  modal.style.display = 'flex';
+}
+window.openAttachmentPreview = openAttachmentPreview;
+
+function closeAttachmentPreview() {
+  const modal = document.getElementById('att-preview-modal');
+  modal.style.display = 'none';
+  document.getElementById('att-preview-img').src = '';
+  document.getElementById('att-preview-iframe').src = '';
+}
+window.closeAttachmentPreview = closeAttachmentPreview;
 
 window.switchReplyTab = function(mode) {
   activeReplyMode = mode;
