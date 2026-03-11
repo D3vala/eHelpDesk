@@ -469,51 +469,117 @@
       </div>
     </div>
 
-    <!-- USER MANAGEMENT MODAL -->
+    <!-- ADD STAFF MODAL -->
     <div class="modal-overlay" id="addStaffModal">
       <div class="modal-container">
         <div class="modal-header">
-          <h2 id="modalTitle">Add New Staff</h2>
+          <h2>Add New Staff</h2>
           <button class="btn-close" onclick="closeAddStaffModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <!-- Form encapsulates body and footer to catch "Enter" submit easily -->
         <form id="addStaffForm" onsubmit="saveStaff(event)">
-          <div class="modal-body">
+            <div class="modal-body">
+            <!-- User Selection Section -->
             <div class="form-group">
-              <label class="form-label">Full Name</label>
-              <input type="text" class="form-input" id="newStaffName" placeholder="e.g. John Doe" required>
+              <label class="form-label">Search User</label>
+              <div class="user-search-container">
+                <input type="text" class="form-input" id="userSearchInput" placeholder="Search users by name or email...">
+                <div class="user-search-results" id="userSearchResults">
+                  <!-- User results will be populated here -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Name and Email Fields -->
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input type="text" class="form-input" id="newStaffName" placeholder="Staff name will be filled when user is selected" readonly>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Email Address</label>
-              <input type="email" class="form-input" id="newStaffEmail" placeholder="e.g. jdoe@mymail.mapua.edu.ph" required>
+              <label class="form-label">Email</label>
+              <input type="email" class="form-input" id="newStaffEmail" placeholder="Staff email will be filled when user is selected" readonly>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-              <div class="form-group">
-                <label class="form-label">Department</label>
-                <select class="form-select" id="newStaffDept" required>
-                  <option value="SOIT">SOIT</option>
-                  <option value="DOIT">DOIT</option>
-                  <option value="Registrar">Registrar</option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label class="form-label">Tier / Level</label>
-                <select class="form-select" id="newStaffTier" required>
-                  <option value="Level 0">Level 0</option>
-                  <option value="Level 1">Level 1</option>
-                  <option value="Level 2">Level 2</option>
-                  <option value="Level 3">Level 3</option>
-                </select>
-              </div>
+            <div class="selected-user-info" id="selectedUserInfo" style="display: none; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+              <div style="font-weight: bold;" id="selectedUserName">Selected User: </div>
+              <div style="color: #666; font-size: 12px;" id="selectedUserEmail">Email: </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Department</label>
+              <select class="form-select" id="addStaffDept" required>
+                <option value="SOIT">SOIT</option>
+                <option value="DOIT">DOIT</option>
+                <option value="Registrar">Registrar</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tier / Level</label>
+              <select class="form-select" id="addStaffTier" required>
+                <option value="Level 0">Level 0</option>
+                <option value="Level 1">Level 1</option>
+                <option value="Level 2">Level 2</option>
+                <option value="Level 3">Level 3</option>
+              </select>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn-cancel" onclick="closeAddStaffModal()">Cancel</button>
-            <button type="submit" class="btn-save" id="saveStaffBtn">Add Staff</button>
+            <button type="submit" class="btn-save">Add Staff</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- EDIT STAFF MODAL -->
+    <div class="modal-overlay" id="editStaffModal">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2>Edit Staff</h2>
+          <button class="btn-close" onclick="closeEditStaffModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Form encapsulates body and footer to catch "Enter" submit easily -->
+        <form id="editStaffForm" onsubmit="saveEditStaff(event)">
+            <div class="modal-body">
+            <!-- Staff Information Section -->
+            <div class="form-group">
+              <label class="form-label">Staff Name</label>
+              <input type="text" class="form-input" id="editStaffName" placeholder="Enter staff name" required>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Staff Email</label>
+              <input type="email" class="form-input" id="editStaffEmail" placeholder="Enter staff email" required>
+            </div>
+            
+            <input type="hidden" id="editStaffId">
+
+            <div class="form-group">
+              <label class="form-label">Department</label>
+              <select class="form-select" id="editStaffDept" required>
+                <option value="SOIT">SOIT</option>
+                <option value="DOIT">DOIT</option>
+                <option value="Registrar">Registrar</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Tier / Level</label>
+              <select class="form-select" id="editStaffTier" required>
+                <option value="Level 0">Level 0</option>
+                <option value="Level 1">Level 1</option>
+                <option value="Level 2">Level 2</option>
+                <option value="Level 3">Level 3</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeEditStaffModal()">Cancel</button>
+            <button type="submit" class="btn-save">Save Changes</button>
           </div>
         </form>
       </div>
