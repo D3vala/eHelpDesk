@@ -436,14 +436,21 @@ async function uploadTicketAttachments(ticketId, files, uploaderEmail) {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const storagePath = `${ticketId}/${Date.now()}_${safeName}`;
 
-      // Step 1 — try to upload to Supabase Storage
+      // Step 1 — try Supabase Storage; fall back to base64 data URL
       let fileUrl = '';
       const { error: uploadError } = await window.supabase.storage
         .from('ticket-attachments')
         .upload(storagePath, file, { upsert: false });
 
       if (uploadError) {
-        console.error('Storage upload failed for', file.name, ':', uploadError.message, '(code:', uploadError.statusCode ?? uploadError.error, ')');
+        console.warn('Storage upload failed for', file.name, '— using base64 fallback.', uploadError.message);
+        // Fallback: read file as base64 data URL so it can be viewed/downloaded without storage
+        fileUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
       } else {
         const { data: urlData } = window.supabase.storage
           .from('ticket-attachments')
@@ -451,7 +458,7 @@ async function uploadTicketAttachments(ticketId, files, uploaderEmail) {
         fileUrl = urlData?.publicUrl || '';
       }
 
-      // Step 2 — always insert the DB record so the attachment appears in the staff modal
+      // Step 2 — insert the DB record
       const { error: dbError } = await window.supabase
         .from('attachments')
         .insert({
@@ -509,13 +516,16 @@ async function loadStudentAttachments(ticketId) {
   list.innerHTML = '';
   data.forEach(att => {
     const hasUrl = att.file_url && att.file_url !== 'pending';
+    const isDataUrl = hasUrl && att.file_url.startsWith('data:');
     const pill = document.createElement(hasUrl ? 'a' : 'span');
     pill.className = 'attachment-pill';
     if (hasUrl) {
       pill.href = att.file_url;
-      pill.target = '_blank';
-      pill.rel = 'noopener noreferrer';
       pill.download = att.file_name;
+      if (!isDataUrl) {
+        pill.target = '_blank';
+        pill.rel = 'noopener noreferrer';
+      }
     }
     const icon = getStudentFileIcon(att.file_type);
     const size = formatStudentFileSize(att.file_size);

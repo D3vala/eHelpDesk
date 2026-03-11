@@ -457,13 +457,16 @@ window.openTicketModal = async function(ticketId) {
       attContainer.style.display = '';
       attData.forEach(att => {
         const hasUrl = att.file_url && att.file_url !== 'pending';
+        const isDataUrl = hasUrl && att.file_url.startsWith('data:');
         const pill = document.createElement(hasUrl ? 'a' : 'div');
         pill.className = 'attachment-pill';
         if (hasUrl) {
           pill.href = att.file_url;
-          pill.target = '_blank';
-          pill.rel = 'noopener noreferrer';
           pill.download = att.file_name;
+          if (!isDataUrl) {
+            pill.target = '_blank';
+            pill.rel = 'noopener noreferrer';
+          }
         }
         const iconClass = !att.file_type ? 'fa-file'
           : att.file_type.startsWith('image/')        ? 'fa-file-image'
