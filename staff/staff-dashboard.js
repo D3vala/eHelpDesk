@@ -271,12 +271,15 @@ async function loadStaffAttachments(ticketId) {
         return;
     }
     data.forEach(att => {
-        const pill = document.createElement('a');
+        const hasUrl = att.file_url && att.file_url !== 'pending';
+        const pill = document.createElement(hasUrl ? 'a' : 'div');
         pill.className  = 'attachment-pill';
-        pill.href       = att.file_url;
-        pill.target     = '_blank';
-        pill.rel        = 'noopener noreferrer';
-        pill.innerHTML  = `<i class="fa-solid ${getStaffFileIcon(att.file_type)}"></i> ${att.file_name} <span style="color:#aaa;">(${formatStaffFileSize(att.file_size)})</span>`;
+        if (hasUrl) {
+            pill.href   = att.file_url;
+            pill.target = '_blank';
+            pill.rel    = 'noopener noreferrer';
+        }
+        pill.innerHTML  = `<i class="fa-solid ${getStaffFileIcon(att.file_type)}"></i> ${att.file_name} <span style="color:#aaa;">(${formatStaffFileSize(att.file_size)})</span>${!hasUrl ? ' <span style="color:#f97316;font-size:10px;">no download link</span>' : ''}`;
         container.appendChild(pill);
     });
 }

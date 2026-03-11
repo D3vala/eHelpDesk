@@ -422,6 +422,15 @@ async function createTicket(event) {
       alert('Error creating ticket. Please check your connection and try again.');
       return;
     }
+
+    // Upload any attached files
+    if (uploadedFiles.length > 0) {
+      await uploadTicketAttachments(saved.id, uploadedFiles, userEmail);
+      uploadedFiles = [];
+      const fileDisplayArea = document.getElementById('file-display-area');
+      if (fileDisplayArea) fileDisplayArea.innerHTML = '';
+    }
+
     loadTickets();
     window._lastCreatedTicketId = saved.id;
     const ticketIdEl = document.querySelector('#popupOverlay .ticket-id');
@@ -431,6 +440,48 @@ async function createTicket(event) {
   } catch (error) {
     console.error('Error creating ticket:', error);
     alert('Error creating ticket. Please try again.');
+  }
+}
+
+async function uploadTicketAttachments(ticketId, files, uploaderEmail) {
+  for (const file of files) {
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `${ticketId}/${Date.now()}_${safeName}`;
+
+      // Step 1 — try to upload to Supabase Storage
+      let fileUrl = '';
+      const { error: uploadError } = await window.supabase.storage
+        .from('ticket-attachments')
+        .upload(storagePath, file, { upsert: false });
+
+      if (uploadError) {
+        console.warn('Storage upload failed for', file.name, '— saving metadata only.', uploadError.message);
+      } else {
+        const { data: urlData } = window.supabase.storage
+          .from('ticket-attachments')
+          .getPublicUrl(storagePath);
+        fileUrl = urlData?.publicUrl || '';
+      }
+
+      // Step 2 — always insert the DB record so the attachment appears in the staff modal
+      const { error: dbError } = await window.supabase
+        .from('attachments')
+        .insert({
+          ticket_id:   ticketId,
+          file_name:   file.name,
+          file_url:    fileUrl || 'pending',
+          file_size:   file.size,
+          file_type:   file.type,
+          uploaded_by: uploaderEmail
+        });
+
+      if (dbError) {
+        console.error('Attachment DB insert error for', file.name, dbError);
+      }
+    } catch (err) {
+      console.error('Unexpected error uploading', file.name, err);
+    }
   }
 }
 
