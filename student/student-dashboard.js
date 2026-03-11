@@ -253,7 +253,7 @@ async function updateTicket(ticketId, updates) {
   }
 }
 
-async function deleteTicket(ticketId) {
+async function deleteTicketFromDB(ticketId) {
   try {
     const { error } = await supabase
       .from('tickets')
@@ -286,6 +286,7 @@ async function loadTickets() {
 // Render tickets in the table
 function renderTickets(tickets) {
   const tbody = document.getElementById('table-body');
+  if (!tbody) return;
   tbody.innerHTML = '';
   
   if (tickets.length === 0) {
@@ -340,13 +341,18 @@ function handleStatusFilter() {
 
 // Update statistics
 function updateStats(tickets) {
-  const allCount = tickets.length;
-  const pendingCount = tickets.filter(t => t.status === 'In Progress').length;
-  const closedCount = tickets.filter(t => t.status === 'Resolved').length;
-  
-  document.querySelector('.stat-card:nth-child(1) .stat-number').textContent = allCount;
-  document.querySelector('.stat-card:nth-child(2) .stat-number').textContent = pendingCount;
-  document.querySelector('.stat-card:nth-child(3) .stat-number').textContent = closedCount;
+  const userEmail = localStorage.getItem("userEmail");
+  const userTickets = tickets.filter(t => t.email === userEmail);
+  const allCount = userTickets.length;
+  const pendingCount = userTickets.filter(t => t.status === 'In Progress').length;
+  const closedCount = userTickets.filter(t => t.status === 'Resolved').length;
+
+  const card1 = document.querySelector('.stat-card:nth-child(1) .stat-number');
+  const card2 = document.querySelector('.stat-card:nth-child(2) .stat-number');
+  const card3 = document.querySelector('.stat-card:nth-child(3) .stat-number');
+  if (card1) card1.textContent = allCount;
+  if (card2) card2.textContent = pendingCount;
+  if (card3) card3.textContent = closedCount;
 }
 
 // Utility functions
@@ -363,7 +369,8 @@ function formatDate(dateString) {
 }
 
 // CRUD Operations
-async function createTicket() {
+async function createTicket(event) {
+  event.preventDefault();
   const campus = document.querySelector("select:first-of-type")?.value || "Not Specified";
   const dept = document.querySelectorAll("select")[1]?.value || "Not Specified";
   const ccs = document.querySelector('input[placeholder="Select CCs"]')?.value || "none";
@@ -395,9 +402,12 @@ async function createTicket() {
 
   try {
     await saveTicket(newTicket);
-    alert('Ticket created successfully!');
     loadTickets();
-    resetForm();
+    window._lastCreatedTicketId = newTicket.id;
+    const ticketIdEl = document.querySelector('#popupOverlay .ticket-id');
+    if (ticketIdEl) ticketIdEl.textContent = `Ticket ID: ${newTicket.id}`;
+    const popup = document.getElementById('popupOverlay');
+    if (popup) popup.style.display = 'flex';
   } catch (error) {
     console.error('Error creating ticket:', error);
     alert('Error creating ticket. Please try again.');
@@ -472,7 +482,7 @@ async function updateExistingTicket(ticketId) {
 async function deleteTicket(ticketId) {
   if (confirm("Are you sure you want to delete this ticket?")) {
     try {
-      await deleteTicket(ticketId);
+      await deleteTicketFromDB(ticketId);
       alert('Ticket deleted successfully!');
       loadTickets();
     } catch (error) {
@@ -482,7 +492,23 @@ async function deleteTicket(ticketId) {
   }
 }
 
+function showViewTicket() {
+  const popup = document.getElementById('popupOverlay');
+  if (popup) popup.style.display = 'none';
+  if (window._lastCreatedTicketId) {
+    viewTicket(window._lastCreatedTicketId);
+  }
+}
+
+function triggerWheel() {
+  const wheel = document.getElementById('hiddenWheel');
+  if (wheel) wheel.click();
+}
+
 function resetForm() {
+  // Hide popup overlay
+  const popup = document.getElementById('popupOverlay');
+  if (popup) popup.style.display = 'none';
   // Reset the form fields
   const form = document.getElementById("ticketForm");
   if (form) form.reset();
