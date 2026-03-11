@@ -800,21 +800,26 @@ window.openAddStaffModal = function() {
   document.getElementById("addStaffModal").classList.add("active");
 };
 
-window.openEditStaffModal = function(staffId) {
-  const staff  = getStaff();
-  const member = staff.find(s => s.id === staffId);
-  if (!member) return;
+window.openEditStaffModal = async function(staffId) {
+  try {
+    const staff  = await getStaff();
+    const member = staff.find(s => s.id === staffId);
+    if (!member) return;
 
-  editingStaffId = staffId;
-  document.getElementById("modalTitle").textContent     = "Edit Staff";
-  document.getElementById("saveStaffBtn").textContent   = "Save Changes";
+    editingStaffId = staffId;
+    document.getElementById("modalTitle").textContent     = "Edit Staff";
+    document.getElementById("saveStaffBtn").textContent   = "Save Changes";
 
-  document.getElementById("newStaffName").value  = member.name;
-  document.getElementById("newStaffEmail").value = member.email;
-  document.getElementById("newStaffDept").value  = member.dept;
-  document.getElementById("newStaffTier").value  = member.tier;
+    document.getElementById("newStaffName").value  = member.name;
+    document.getElementById("newStaffEmail").value = member.email;
+    document.getElementById("newStaffDept").value  = member.dept;
+    document.getElementById("newStaffTier").value  = member.tier;
 
-  document.getElementById("addStaffModal").classList.add("active");
+    document.getElementById("addStaffModal").classList.add("active");
+  } catch (error) {
+    console.error('Error opening edit staff modal:', error);
+    alert('Error loading staff data. Please try again.');
+  }
 };
 
 window.closeAddStaffModal = function() {

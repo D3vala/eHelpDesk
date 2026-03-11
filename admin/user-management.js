@@ -218,15 +218,145 @@ function openEditStaffModal(id) {
   const staff = staffData.find(s => s.id === id);
   if (!staff) return;
 
-  document.getElementById('modalTitle').textContent = 'Edit Staff';
-  document.getElementById('saveStaffBtn').textContent = 'Save Changes';
+  // Populate edit modal fields
+  document.getElementById('editStaffName').value = staff.name;
+  document.getElementById('editStaffEmail').value = staff.email;
+  document.getElementById('editStaffDept').value = staff.dept;
   
-  document.getElementById('newStaffName').value = staff.name;
-  document.getElementById('newStaffEmail').value = staff.email;
-  document.getElementById('newStaffDept').value = staff.dept;
-  document.getElementById('newStaffTier').value = staff.tier;
+  // Set current level and update button states
+  setCurrentLevel(staff.tier);
 
-  document.getElementById('addStaffModal').classList.add('active');
+  document.getElementById('editStaffModal').classList.add('active');
+}
+
+function setCurrentLevel(level) {
+  const currentLevelSpan = document.getElementById('currentLevel');
+  const btnDecrease = document.getElementById('btnDecreaseLevel');
+  const btnIncrease = document.getElementById('btnIncreaseLevel');
+  
+  currentLevelSpan.textContent = level;
+  
+  // Enable/disable buttons based on current level
+  if (level === 'Level 0') {
+    btnDecrease.disabled = true;
+    btnIncrease.disabled = false;
+  } else if (level === 'Level 3') {
+    btnDecrease.disabled = false;
+    btnIncrease.disabled = true;
+  } else {
+    btnDecrease.disabled = false;
+    btnIncrease.disabled = false;
+  }
+}
+
+function increaseLevel() {
+  const currentLevelSpan = document.getElementById('currentLevel');
+  const currentLevel = currentLevelSpan.textContent;
+  
+  if (currentLevel === 'Level 0') {
+    setCurrentLevel('Level 1');
+  } else if (currentLevel === 'Level 1') {
+    setCurrentLevel('Level 2');
+  } else if (currentLevel === 'Level 2') {
+    setCurrentLevel('Level 3');
+  }
+}
+
+function decreaseLevel() {
+  const currentLevelSpan = document.getElementById('currentLevel');
+  const currentLevel = currentLevelSpan.textContent;
+  
+  if (currentLevel === 'Level 1') {
+    setCurrentLevel('Level 0');
+  } else if (currentLevel === 'Level 2') {
+    setCurrentLevel('Level 1');
+  } else if (currentLevel === 'Level 3') {
+    setCurrentLevel('Level 2');
+  }
+}
+
+function closeEditStaffModal() {
+  document.getElementById('editStaffModal').classList.remove('active');
+}
+
+function togglePasswordVisibility() {
+  const passwordInput = document.getElementById('editStaffPassword');
+  const toggleIcon = document.getElementById('passwordToggleIcon');
+  
+  if (passwordInput.type === 'password') {
+    passwordInput.type = 'text';
+    toggleIcon.classList.remove('fa-eye');
+    toggleIcon.classList.add('fa-eye-slash');
+  } else {
+    passwordInput.type = 'password';
+    toggleIcon.classList.remove('fa-eye-slash');
+    toggleIcon.classList.add('fa-eye');
+  }
+}
+
+async function updateStaff(e) {
+  e.preventDefault();
+  
+  const name = document.getElementById('editStaffName').value.trim();
+  const email = document.getElementById('editStaffEmail').value.trim();
+  const dept = document.getElementById('editStaffDept').value;
+  const tier = document.getElementById('currentLevel').textContent;
+  const password = document.getElementById('editStaffPassword').value.trim();
+
+  try {
+    const staff = staffData.find(s => s.id === editingStaffId);
+    if (!staff) return;
+
+    // Update local data
+    staff.name = name;
+    staff.email = email;
+    staff.dept = dept;
+    staff.tier = tier;
+
+    // Prepare update data for Supabase
+    const updateData = {
+      id: staff.id,
+      full_name: name,
+      email: email,
+      department: dept,
+      tier: tier,
+      role: 'staff',
+      status: staff.status || 'Offline'
+    };
+
+    // Save to Supabase
+    await saveStaffData([updateData]);
+    
+    // Save to local storage for backward compatibility
+    syncData();
+    closeEditStaffModal();
+    renderTable();
+    
+    alert('Staff member updated successfully!');
+  } catch (error) {
+    console.error('Error updating staff:', error);
+    alert('Error updating staff member. Please try again.');
+  }
+}
+
+// Function to handle password updates (separate from regular updates)
+async function updateStaffPassword(staffId, newPassword) {
+  try {
+    // Note: In a real application, password updates should be handled through
+    // Supabase's authentication system, not through the client directly.
+    // This is a placeholder for demonstration purposes.
+    
+    alert('Password update functionality would be implemented through Supabase Auth.\n\n' +
+          'In a production environment, you would:\n' +
+          '1. Use Supabase Auth admin API to update password\n' +
+          '2. Require admin privileges\n' +
+          '3. Implement proper security measures');
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating password:', error);
+    return false;
+  }
 }
 
 function closeAddStaffModal() {
