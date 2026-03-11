@@ -151,5 +151,128 @@
       </div>
     </main>
 
+    <!-- ===== TICKET DETAIL MODAL ===== -->
+    <div class="modal-overlay" id="ticket-detail-modal">
+      <div class="modal-container">
+
+        <!-- HEADER -->
+        <div class="modal-header">
+          <div class="modal-header-text">
+            <h2>
+              <span id="modal-ticket-id">&mdash;</span>
+              <span id="modal-ticket-status-badge" class="status-pill status-progress"></span>
+            </h2>
+            <p id="modal-ticket-subject">Loading...</p>
+          </div>
+          <button class="btn-close" onclick="closeTicketModal()">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- BODY -->
+        <div class="modal-body">
+
+          <!-- LEFT PANEL -->
+          <div class="modal-left">
+
+            <div class="description-box">
+              <h3>Description</h3>
+              <p id="modal-ticket-description">—</p>
+
+              <div class="attachments-section" id="modal-attachments-container">
+                <h4>ATTACHMENTS</h4>
+                <p style="font-size:13px; color:#888;">Loading...</p>
+              </div>
+            </div>
+
+            <!-- Reply Tabs -->
+            <div class="reply-tabs">
+              <div class="reply-tab active" id="tab-sms" onclick="switchReplyTab('sms')">
+                <i class="fa-solid fa-mobile-screen-button"></i> SMS Reply to User
+              </div>
+              <div class="reply-tab" id="tab-internal" onclick="switchReplyTab('internal')">
+                <i class="fa-solid fa-lock"></i> Internal Note
+              </div>
+            </div>
+
+            <textarea class="reply-textarea" id="reply-textarea"
+              placeholder="Type message to send via SMS..." oninput="updateCharCount()"></textarea>
+
+            <div class="reply-footer">
+              <button class="submit-reply-btn" onclick="submitStaffMessage()">Send Message</button>
+              <div class="char-count" id="char-count">160 chars left</div>
+            </div>
+
+            <!-- Activity Thread -->
+            <div class="activity-thread">
+              <h3>Activity Thread</h3>
+              <div id="activity-feed">
+                <p style="font-size:13px; color:#888;">No activities yet.</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT PANEL -->
+          <div class="modal-right">
+
+            <div class="sidebar-section">
+              <h4>REPORTER</h4>
+              <div class="reporter-info">
+                <div class="reporter-avatar" id="modal-reporter-initials">--</div>
+                <div class="reporter-details">
+                  <strong id="modal-reporter-name">—</strong>
+                  <span id="modal-reporter-email">—</span>
+                  <span id="modal-reporter-phone">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <h4>TICKET DETAILS</h4>
+              <div class="details-grid">
+                <div class="detail-row">
+                  <span class="detail-label">Campus:</span>
+                  <span class="detail-value" id="modal-detail-campus">—</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Department:</span>
+                  <span class="detail-value" id="modal-detail-dept">—</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Priority:</span>
+                  <span class="detail-value" id="modal-detail-priority">—</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">CCs:</span>
+                  <span class="detail-value" id="modal-detail-cc">—</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Created:</span>
+                  <span class="detail-value" id="modal-detail-created">—</span>
+                </div>
+                <div class="detail-row" id="modal-resolved-row" style="display:none;">
+                  <span class="detail-label">Resolved:</span>
+                  <span class="detail-value" id="modal-detail-resolved">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <h4>SLA TIMER</h4>
+              <div class="sla-timer-large" id="modal-sla-timer">—</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeTicketModal()">Close</button>
+        </div>
+
+      </div>
+    </div>
+
     <script src="staff-dashboard.js"></script>
 </html>

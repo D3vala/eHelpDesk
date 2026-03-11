@@ -376,41 +376,92 @@ async function createTicket(event) {
   const ccs = document.querySelector('input[placeholder="Select CCs"]')?.value || "none";
   const subject = document.querySelector('input[placeholder="Enter subject"]')?.value || "No Subject";
   const description = document.getElementById("editor")?.innerText || "";
-  const now = new Date();
   const userFullName = localStorage.getItem("userFullName") || "Anonymous";
   const userEmail = localStorage.getItem("userEmail") || "unknown@mapua.edu.ph";
 
+  const ccEmails = ccs.split(',').map(e => e.trim()).filter(Boolean);
+
   const newTicket = {
-    id: generateTicketID(),
-    subject: subject,
-    email: userEmail,
-    assignee: "Unassigned",
-    slaMs: 86400000, // 24-hour SLA default
-    status: "In Progress",
-    description: description,
-    reporter_name: userFullName,
-    phone: "N/A",
-    campus: campus,
-    department: dept,
-    cc: ccs,
-    created_at: now.toISOString(),
-    attachments: uploadedFiles.map(f => ({ name: f.name, size: (f.size / 1024 / 1024).toFixed(1) + " MB" })),
-    activities: [
-      { type: "system", author: "System", text: `Ticket created by ${userFullName} (${userEmail})`, time: "Just now" }
-    ]
+    subject:          subject,
+    description:      description,
+    reporter_email:   userEmail,
+    reporter_name:    userFullName,
+    campus_location:  campus,
+    department:       dept,
+    cc_emails:        ccEmails,
+    status:           'open',
+    priority:         'medium',
+    sla_target_hours: 24
   };
 
   try {
-    await saveTicket(newTicket);
+    const saved = await saveTicket(newTicket);
+    if (!saved) {
+      alert('Error creating ticket. Please check your connection and try again.');
+      return;
+    }
+
+    // Upload any attached files to Supabase Storage and record in attachments table
+    if (uploadedFiles.length > 0) {
+      await uploadTicketAttachments(saved.id, uploadedFiles);
+      uploadedFiles = [];
+      renderFileList();
+    }
+
     loadTickets();
-    window._lastCreatedTicketId = newTicket.id;
+    window._lastCreatedTicketId = saved.id;
     const ticketIdEl = document.querySelector('#popupOverlay .ticket-id');
-    if (ticketIdEl) ticketIdEl.textContent = `Ticket ID: ${newTicket.id}`;
+    if (ticketIdEl) ticketIdEl.textContent = `Ticket ID: ${saved.ticket_id || saved.id}`;
     const popup = document.getElementById('popupOverlay');
     if (popup) popup.style.display = 'flex';
   } catch (error) {
     console.error('Error creating ticket:', error);
     alert('Error creating ticket. Please try again.');
+  }
+}
+
+async function uploadTicketAttachments(ticketId, files) {
+  const userEmail = localStorage.getItem('userEmail') || 'unknown';
+  for (const file of files) {
+    try {
+      // Sanitise filename to avoid path issues
+      const safeName  = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `${ticketId}/${Date.now()}_${safeName}`;
+
+      const { data: uploadData, error: uploadErr } = await window.supabase
+        .storage
+        .from('ticket-attachments')
+        .upload(storagePath, file, { upsert: false });
+
+      if (uploadErr) {
+        console.error('File upload error:', uploadErr);
+        continue;
+      }
+
+      // Get public URL
+      const { data: urlData } = window.supabase
+        .storage
+        .from('ticket-attachments')
+        .getPublicUrl(storagePath);
+
+      const fileUrl = urlData?.publicUrl || '';
+
+      // Insert row in attachments table
+      const { error: insertErr } = await window.supabase
+        .from('attachments')
+        .insert({
+          ticket_id:   ticketId,
+          file_name:   file.name,
+          file_url:    fileUrl,
+          file_size:   file.size,
+          file_type:   file.type,
+          uploaded_by: userEmail
+        });
+
+      if (insertErr) console.error('Attachment insert error:', insertErr);
+    } catch (err) {
+      console.error('Unexpected upload error:', err);
+    }
   }
 }
 
