@@ -487,16 +487,35 @@ window.openTicketModal = async function(ticketId) {
 
     // Attachments
     const attContainer = document.getElementById("modal-attachments-container");
-    if (ticket.attachments && ticket.attachments.length > 0) {
-      attContainer.style.display = "";
-      attContainer.innerHTML = `<h4>ATTACHMENTS</h4>` +
-        ticket.attachments.map(a =>
-          `<div style="font-size:13px; color:#555; margin-top:4px;">
-             <i class="fa-solid fa-paperclip"></i> ${a.name} <span style="color:#aaa;">(${a.size})</span>
-           </div>`
-        ).join("");
-    } else {
-      attContainer.style.display = "none";
+    attContainer.style.display = "none";
+    attContainer.innerHTML = '<h4>ATTACHMENTS</h4>';
+    const { data: attData } = await supabase.from('attachments').select('*').eq('ticket_id', ticketId);
+    if (attData && attData.length > 0) {
+      attContainer.style.display = '';
+      attData.forEach(att => {
+        const hasUrl = att.file_url && att.file_url !== 'pending';
+        const pill = document.createElement(hasUrl ? 'a' : 'div');
+        pill.className = 'attachment-pill';
+        if (hasUrl) {
+          pill.href = att.file_url;
+          pill.target = '_blank';
+          pill.rel = 'noopener noreferrer';
+          pill.download = att.file_name;
+        }
+        const iconClass = !att.file_type ? 'fa-file'
+          : att.file_type.startsWith('image/')        ? 'fa-file-image'
+          : att.file_type === 'application/pdf'        ? 'fa-file-pdf'
+          : att.file_type.includes('word')             ? 'fa-file-word'
+          : (att.file_type.includes('sheet') || att.file_type.includes('excel') || att.file_type.includes('csv')) ? 'fa-file-excel'
+          : 'fa-file';
+        const sizeLabel = att.file_size
+          ? (att.file_size < 1024 ? `${att.file_size} B`
+            : att.file_size < 1048576 ? `${(att.file_size / 1024).toFixed(1)} KB`
+            : `${(att.file_size / 1048576).toFixed(1)} MB`)
+          : '';
+        pill.innerHTML = `<i class="fa-solid ${iconClass}"></i> ${att.file_name}${sizeLabel ? ` <span style="color:#aaa;">(${sizeLabel})</span>` : ''}${!hasUrl ? ' <span style="color:#f97316;font-size:10px;">no download link</span>' : ''}`;
+        attContainer.appendChild(pill);
+      });
     }
 
     // Reporter
