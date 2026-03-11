@@ -62,28 +62,6 @@ body {
 
 .nav-controls { display: flex; gap: 15px; align-items: center; }
 
-.search-bar { position: relative; }
-
-.search-icon { 
-    width: 14px !important; 
-    height: auto !important;
-    position: absolute; 
-    left: 12px; 
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.5; 
-    z-index: 2; 
-}
-
-.search-bar input { 
-    padding: 10px 15px 10px 38px; 
-    border-radius: 20px; 
-    border: 1px solid #ddd; 
-    width: 240px; 
-    outline: none;
-    font-size: 13px;
-}
-
 /* --- Shared Buttons --- */
 .btn {
     padding: 8px 20px;

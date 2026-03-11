@@ -44,12 +44,6 @@ function initAuth() {
 }
 
 function initEventListeners() {
-  // Search functionality
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', handleSearch);
-  }
-
   // Status filter
   const statusDropdown = document.querySelector('.status-dropdown');
   if (statusDropdown) {
@@ -335,13 +329,6 @@ function filterTicketsByUser(tickets) {
   );
 }
 
-// Handle search functionality
-function handleSearch() {
-  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-  // Implementation would filter tickets based on search term
-  loadTickets();
-}
-
 // Handle status filter
 function handleStatusFilter() {
   const statusFilter = document.querySelector('.status-dropdown').value;
@@ -456,7 +443,7 @@ async function uploadTicketAttachments(ticketId, files, uploaderEmail) {
         .upload(storagePath, file, { upsert: false });
 
       if (uploadError) {
-        console.warn('Storage upload failed for', file.name, '— saving metadata only.', uploadError.message);
+        console.error('Storage upload failed for', file.name, ':', uploadError.message, '(code:', uploadError.statusCode ?? uploadError.error, ')');
       } else {
         const { data: urlData } = window.supabase.storage
           .from('ticket-attachments')

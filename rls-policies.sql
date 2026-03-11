@@ -285,3 +285,26 @@ ALTER TABLE staff_availability FORCE ROW LEVEL SECURITY;
 
 -- Note: The FORCE ROW LEVEL SECURITY ensures that even the table owner
 -- must comply with RLS policies, providing maximum security
+
+-- ========================================
+-- STORAGE BUCKET SETUP
+-- ========================================
+-- Run this to create the storage bucket (skip if it already exists in the dashboard)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('ticket-attachments', 'ticket-attachments', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Allow authenticated users to upload files
+CREATE POLICY "Authenticated users can upload attachments"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'ticket-attachments');
+
+-- Allow authenticated users to read/download files
+CREATE POLICY "Authenticated users can read attachments"
+ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'ticket-attachments');
+
+-- Allow public (anon) read so download links work without a session
+CREATE POLICY "Public can read attachments"
+ON storage.objects FOR SELECT TO anon
+USING (bucket_id = 'ticket-attachments');
