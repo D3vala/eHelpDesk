@@ -253,7 +253,7 @@ async function updateTicket(ticketId, updates) {
   }
 }
 
-async function deleteTicket(ticketId) {
+async function deleteTicketFromDB(ticketId) {
   try {
     const { error } = await supabase
       .from('tickets')
@@ -286,6 +286,7 @@ async function loadTickets() {
 // Render tickets in the table
 function renderTickets(tickets) {
   const tbody = document.getElementById('table-body');
+  if (!tbody) return;
   tbody.innerHTML = '';
   
   if (tickets.length === 0) {
@@ -340,13 +341,18 @@ function handleStatusFilter() {
 
 // Update statistics
 function updateStats(tickets) {
-  const allCount = tickets.length;
-  const pendingCount = tickets.filter(t => t.status === 'In Progress').length;
-  const closedCount = tickets.filter(t => t.status === 'Resolved').length;
-  
-  document.querySelector('.stat-card:nth-child(1) .stat-number').textContent = allCount;
-  document.querySelector('.stat-card:nth-child(2) .stat-number').textContent = pendingCount;
-  document.querySelector('.stat-card:nth-child(3) .stat-number').textContent = closedCount;
+  const userEmail = localStorage.getItem("userEmail");
+  const userTickets = tickets.filter(t => t.email === userEmail);
+  const allCount = userTickets.length;
+  const pendingCount = userTickets.filter(t => t.status === 'In Progress').length;
+  const closedCount = userTickets.filter(t => t.status === 'Resolved').length;
+
+  const card1 = document.querySelector('.stat-card:nth-child(1) .stat-number');
+  const card2 = document.querySelector('.stat-card:nth-child(2) .stat-number');
+  const card3 = document.querySelector('.stat-card:nth-child(3) .stat-number');
+  if (card1) card1.textContent = allCount;
+  if (card2) card2.textContent = pendingCount;
+  if (card3) card3.textContent = closedCount;
 }
 
 // Utility functions
@@ -363,44 +369,99 @@ function formatDate(dateString) {
 }
 
 // CRUD Operations
-async function createTicket() {
+async function createTicket(event) {
+  event.preventDefault();
   const campus = document.querySelector("select:first-of-type")?.value || "Not Specified";
   const dept = document.querySelectorAll("select")[1]?.value || "Not Specified";
   const ccs = document.querySelector('input[placeholder="Select CCs"]')?.value || "none";
   const subject = document.querySelector('input[placeholder="Enter subject"]')?.value || "No Subject";
   const description = document.getElementById("editor")?.innerText || "";
-  const now = new Date();
   const userFullName = localStorage.getItem("userFullName") || "Anonymous";
   const userEmail = localStorage.getItem("userEmail") || "unknown@mapua.edu.ph";
 
+  const ccEmails = ccs.split(',').map(e => e.trim()).filter(Boolean);
+
   const newTicket = {
-    id: generateTicketID(),
-    subject: subject,
-    email: userEmail,
-    assignee: "Unassigned",
-    slaMs: 86400000, // 24-hour SLA default
-    status: "In Progress",
-    description: description,
-    reporter_name: userFullName,
-    phone: "N/A",
-    campus: campus,
-    department: dept,
-    cc: ccs,
-    created_at: now.toISOString(),
-    attachments: uploadedFiles.map(f => ({ name: f.name, size: (f.size / 1024 / 1024).toFixed(1) + " MB" })),
-    activities: [
-      { type: "system", author: "System", text: `Ticket created by ${userFullName} (${userEmail})`, time: "Just now" }
-    ]
+    subject:          subject,
+    description:      description,
+    reporter_email:   userEmail,
+    reporter_name:    userFullName,
+    campus_location:  campus,
+    department:       dept,
+    cc_emails:        ccEmails,
+    status:           'open',
+    priority:         'medium',
+    sla_target_hours: 24
   };
 
   try {
-    await saveTicket(newTicket);
-    alert('Ticket created successfully!');
+    const saved = await saveTicket(newTicket);
+    if (!saved) {
+      alert('Error creating ticket. Please check your connection and try again.');
+      return;
+    }
+
+    // Upload any attached files to Supabase Storage and record in attachments table
+    if (uploadedFiles.length > 0) {
+      await uploadTicketAttachments(saved.id, uploadedFiles);
+      uploadedFiles = [];
+      renderFileList();
+    }
+
     loadTickets();
-    resetForm();
+    window._lastCreatedTicketId = saved.id;
+    const ticketIdEl = document.querySelector('#popupOverlay .ticket-id');
+    if (ticketIdEl) ticketIdEl.textContent = `Ticket ID: ${saved.ticket_id || saved.id}`;
+    const popup = document.getElementById('popupOverlay');
+    if (popup) popup.style.display = 'flex';
   } catch (error) {
     console.error('Error creating ticket:', error);
     alert('Error creating ticket. Please try again.');
+  }
+}
+
+async function uploadTicketAttachments(ticketId, files) {
+  const userEmail = localStorage.getItem('userEmail') || 'unknown';
+  for (const file of files) {
+    try {
+      // Sanitise filename to avoid path issues
+      const safeName  = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `${ticketId}/${Date.now()}_${safeName}`;
+
+      const { data: uploadData, error: uploadErr } = await window.supabase
+        .storage
+        .from('ticket-attachments')
+        .upload(storagePath, file, { upsert: false });
+
+      if (uploadErr) {
+        console.error('File upload error:', uploadErr);
+        continue;
+      }
+
+      // Get public URL
+      const { data: urlData } = window.supabase
+        .storage
+        .from('ticket-attachments')
+        .getPublicUrl(storagePath);
+
+      const fileUrl = urlData?.publicUrl || '';
+
+      // Insert row in attachments table
+      const { error: insertErr } = await window.supabase
+        .from('attachments')
+        .insert({
+          ticket_id:   ticketId,
+          file_name:   file.name,
+          file_url:    fileUrl,
+          file_size:   file.size,
+          file_type:   file.type,
+          uploaded_by: userEmail
+        });
+
+      if (insertErr) console.error('Attachment insert error:', insertErr);
+    } catch (err) {
+      console.error('Unexpected upload error:', err);
+    }
   }
 }
 
@@ -472,7 +533,7 @@ async function updateExistingTicket(ticketId) {
 async function deleteTicket(ticketId) {
   if (confirm("Are you sure you want to delete this ticket?")) {
     try {
-      await deleteTicket(ticketId);
+      await deleteTicketFromDB(ticketId);
       alert('Ticket deleted successfully!');
       loadTickets();
     } catch (error) {
@@ -482,7 +543,23 @@ async function deleteTicket(ticketId) {
   }
 }
 
+function showViewTicket() {
+  const popup = document.getElementById('popupOverlay');
+  if (popup) popup.style.display = 'none';
+  if (window._lastCreatedTicketId) {
+    viewTicket(window._lastCreatedTicketId);
+  }
+}
+
+function triggerWheel() {
+  const wheel = document.getElementById('hiddenWheel');
+  if (wheel) wheel.click();
+}
+
 function resetForm() {
+  // Hide popup overlay
+  const popup = document.getElementById('popupOverlay');
+  if (popup) popup.style.display = 'none';
   // Reset the form fields
   const form = document.getElementById("ticketForm");
   if (form) form.reset();
