@@ -135,6 +135,9 @@ function renderTickets(tickets) {
     }
     tickets.forEach(ticket => {
         const tr = document.createElement('tr');
+        tr.className = 'ticket-row';
+        tr.title = 'Click to view details';
+        tr.onclick = () => viewTicketDetails(ticket.id);
         tr.innerHTML = `
             <td>${ticket.ticket_id || ticket.id}</td>
             <td>${ticket.subject || ''}</td>
@@ -192,4 +195,219 @@ function getStatusClass(status) {
 
 function formatDate(dateString) {
     return dateString ? new Date(dateString).toLocaleDateString() : '';
+}
+
+// 7. TICKET DETAIL MODAL
+let currentTicketId = null;
+let staffReplyMode  = 'sms';
+let slaIntervalId   = null;
+
+async function viewTicketDetails(id) {
+    currentTicketId = id;
+
+    const { data: ticket, error } = await window.supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error || !ticket) { console.error('Error loading ticket:', error); return; }
+
+    // Header
+    document.getElementById('sd-modal-ticket-id').textContent = ticket.ticket_id || ('#' + ticket.id);
+    document.getElementById('sd-modal-ticket-subject').textContent = 'Subject: ' + (ticket.subject || '');
+    const badge = document.getElementById('sd-modal-status-badge');
+    badge.className = 'status-pill ' + getStatusClass(ticket.status);
+    badge.textContent = formatStatus(ticket.status);
+
+    // Description
+    document.getElementById('sd-modal-description').textContent = ticket.description || 'No description provided.';
+
+    // Attachments
+    await loadStaffAttachments(id);
+
+    // Reporter
+    const name = ticket.reporter_name || ticket.reporter_email || 'Unknown';
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('sd-modal-reporter-initials').textContent = initials;
+    document.getElementById('sd-modal-reporter-name').textContent    = name;
+    document.getElementById('sd-modal-reporter-email').textContent   = ticket.reporter_email || '-';
+    document.getElementById('sd-modal-reporter-phone').textContent   = ticket.reporter_phone || '-';
+
+    // Ticket details
+    document.getElementById('sd-modal-campus').textContent  = ticket.campus_location || '-';
+    document.getElementById('sd-modal-dept').textContent    = ticket.department       || '-';
+    const ccList = Array.isArray(ticket.cc_emails) ? ticket.cc_emails.join(', ') : (ticket.cc_emails || '-');
+    document.getElementById('sd-modal-cc').textContent      = ccList || '-';
+    document.getElementById('sd-modal-created').textContent = formatDate(ticket.created_at);
+
+    // SLA timer
+    startSlaTimer(ticket);
+
+    // Activity
+    await loadStaffActivityFeed(id);
+
+    // Reset reply box
+    switchStaffReplyTab('sms');
+    document.getElementById('sd-reply-textarea').value = '';
+    updateStaffCharCount();
+
+    // Show modal
+    document.getElementById('ticket-detail-modal').classList.add('active');
+}
+window.viewTicketDetails = viewTicketDetails;
+
+async function loadStaffAttachments(ticketId) {
+    const container = document.getElementById('sd-modal-attachments');
+    container.innerHTML = '<h4>ATTACHMENTS</h4>';
+
+    const { data, error } = await window.supabase
+        .from('attachments')
+        .select('*')
+        .eq('ticket_id', ticketId);
+
+    if (error || !data || data.length === 0) {
+        container.innerHTML += '<p style="font-size:13px;color:#888;">No attachments.</p>';
+        return;
+    }
+    data.forEach(att => {
+        const pill = document.createElement('a');
+        pill.className  = 'attachment-pill';
+        pill.href       = att.file_url;
+        pill.target     = '_blank';
+        pill.rel        = 'noopener noreferrer';
+        pill.innerHTML  = `<i class="fa-solid ${getStaffFileIcon(att.file_type)}"></i> ${att.file_name} <span style="color:#aaa;">(${formatStaffFileSize(att.file_size)})</span>`;
+        container.appendChild(pill);
+    });
+}
+
+async function loadStaffActivityFeed(ticketId) {
+    const feed = document.getElementById('sd-activity-feed');
+    feed.innerHTML = '';
+
+    const { data, error } = await window.supabase
+        .from('activity_log')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+        feed.innerHTML = '<p style="font-size:13px;color:#888;">No activity yet.</p>';
+        return;
+    }
+    data.forEach(act => {
+        let iconClass = 'fa-gear', badgeClass = 'system', badgeText = 'System';
+        if (act.action === 'internal') { iconClass = 'fa-lock';                  badgeClass = 'internal'; badgeText = 'Internal Note'; }
+        else if (act.action === 'sms')  { iconClass = 'fa-mobile-screen-button'; badgeClass = 'sms';      badgeText = 'SMS Reply'; }
+        else if (act.action === 'alert') { iconClass = 'fa-triangle-exclamation'; badgeClass = 'alert';    badgeText = 'Escalation'; }
+
+        const div = document.createElement('div');
+        div.className = 'activity-item';
+        div.innerHTML = `
+            <div class="activity-icon ${badgeClass}"><i class="fa-solid ${iconClass}"></i></div>
+            <div class="activity-content">
+                <div class="activity-meta">
+                    <strong>${act.description ? act.description.split(':')[0] : 'System'}</strong>
+                    <span class="badge ${badgeClass}">${badgeText}</span>
+                </div>
+                <p>${act.description || ''}</p>
+                <span class="activity-time">${new Date(act.created_at).toLocaleString()}</span>
+            </div>`;
+        feed.appendChild(div);
+    });
+}
+
+function startSlaTimer(ticket) {
+    if (slaIntervalId) clearInterval(slaIntervalId);
+    const timerEl = document.getElementById('sd-modal-sla-timer');
+    if (!timerEl) return;
+    function tick() {
+        if (!ticket.created_at) { timerEl.textContent = '--:--:--'; return; }
+        const deadline  = new Date(ticket.created_at).getTime() + 24 * 3600 * 1000;
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+            timerEl.textContent = 'BREACHED';
+            timerEl.style.color = '#ef4444';
+        } else {
+            const h = Math.floor(remaining / 3600000);
+            const m = Math.floor((remaining % 3600000) / 60000);
+            const s = Math.floor((remaining % 60000) / 1000);
+            timerEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            timerEl.style.color = remaining < 3600000 ? '#f97316' : '#111';
+        }
+    }
+    tick();
+    slaIntervalId = setInterval(tick, 1000);
+}
+
+function closeTicketModal() {
+    document.getElementById('ticket-detail-modal').classList.remove('active');
+    currentTicketId = null;
+    if (slaIntervalId) { clearInterval(slaIntervalId); slaIntervalId = null; }
+}
+window.closeTicketModal = closeTicketModal;
+
+function switchStaffReplyTab(mode) {
+    staffReplyMode = mode;
+    const tabSms  = document.getElementById('sd-tab-sms');
+    const tabInt  = document.getElementById('sd-tab-internal');
+    const textarea = document.getElementById('sd-reply-textarea');
+    if (mode === 'sms') {
+        tabSms.classList.add('active');    tabInt.classList.remove('active');
+        textarea.placeholder = 'Type message to send via SMS...';
+        textarea.classList.remove('internal-note-mode');
+    } else {
+        tabInt.classList.add('active');    tabSms.classList.remove('active');
+        textarea.placeholder = 'Type an internal note (visible to staff only)...';
+        textarea.classList.add('internal-note-mode');
+    }
+    updateStaffCharCount();
+}
+window.switchStaffReplyTab = switchStaffReplyTab;
+
+function updateStaffCharCount() {
+    const val = document.getElementById('sd-reply-textarea').value;
+    const el  = document.getElementById('sd-char-count');
+    if (!el) return;
+    el.textContent = staffReplyMode === 'sms' ? `${160 - val.length} chars left` : `${val.length} chars typed`;
+}
+window.updateStaffCharCount = updateStaffCharCount;
+
+async function submitStaffMessage() {
+    const textarea  = document.getElementById('sd-reply-textarea');
+    const text      = textarea.value.trim();
+    if (!text || !currentTicketId) return;
+
+    const staffName = localStorage.getItem('userFullName') || 'Staff';
+    const { error } = await window.supabase
+        .from('activity_log')
+        .insert({
+            ticket_id:   currentTicketId,
+            action:      staffReplyMode,
+            description: `${staffName}: ${text}`,
+            metadata:    { mode: staffReplyMode, author: staffName }
+        });
+
+    if (error) { console.error('Failed to save message:', error); return; }
+    textarea.value = '';
+    updateStaffCharCount();
+    await loadStaffActivityFeed(currentTicketId);
+}
+window.submitStaffMessage = submitStaffMessage;
+
+function getStaffFileIcon(fileType) {
+    if (!fileType) return 'fa-file';
+    if (fileType.startsWith('image/'))          return 'fa-file-image';
+    if (fileType === 'application/pdf')          return 'fa-file-pdf';
+    if (fileType.includes('word'))               return 'fa-file-word';
+    if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('csv'))
+                                                 return 'fa-file-excel';
+    return 'fa-file';
+}
+
+function formatStaffFileSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024)              return `${bytes} B`;
+    if (bytes < 1024 * 1024)       return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

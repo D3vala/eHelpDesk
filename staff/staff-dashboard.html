@@ -151,5 +151,107 @@
       </div>
     </main>
 
+    <!-- TICKET DETAIL MODAL -->
+    <div class="modal-overlay" id="ticket-detail-modal">
+      <div class="modal-container">
+
+        <div class="modal-header">
+          <div class="modal-header-text">
+            <h2>
+              <span id="sd-modal-ticket-id">#000000</span>
+              <span id="sd-modal-status-badge" class="status-pill status-progress">Open</span>
+            </h2>
+            <p id="sd-modal-ticket-subject">Subject: Loading...</p>
+          </div>
+          <button class="btn-close" onclick="closeTicketModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="modal-body">
+
+          <!-- LEFT PANEL -->
+          <div class="modal-left">
+            <div class="description-box">
+              <h3>Description</h3>
+              <p id="sd-modal-description">Loading description...</p>
+              <div class="attachments-section" id="sd-modal-attachments">
+                <h4>ATTACHMENTS</h4>
+              </div>
+            </div>
+
+            <div class="reply-tabs">
+              <div class="reply-tab active" id="sd-tab-sms" onclick="switchStaffReplyTab('sms')">
+                <i class="fa-solid fa-mobile-screen-button"></i> SMS Reply to User
+              </div>
+              <div class="reply-tab" id="sd-tab-internal" onclick="switchStaffReplyTab('internal')">
+                <i class="fa-solid fa-lock"></i> Internal Note
+              </div>
+            </div>
+
+            <textarea class="reply-textarea" id="sd-reply-textarea"
+              placeholder="Type message to send via SMS..."
+              oninput="updateStaffCharCount()"></textarea>
+
+            <div class="reply-footer">
+              <button class="submit-reply-btn" onclick="submitStaffMessage()">Send Message</button>
+              <div class="char-count" id="sd-char-count">160 chars left</div>
+            </div>
+
+            <div class="activity-thread">
+              <h3>Activity Thread</h3>
+              <div id="sd-activity-feed"></div>
+            </div>
+          </div>
+
+          <!-- RIGHT PANEL -->
+          <div class="modal-right">
+            <div class="sidebar-section">
+              <h4>REPORTER</h4>
+              <div class="reporter-info">
+                <div class="reporter-avatar" id="sd-modal-reporter-initials">--</div>
+                <div class="reporter-details">
+                  <strong id="sd-modal-reporter-name">Loading...</strong>
+                  <span id="sd-modal-reporter-email">-</span>
+                  <span id="sd-modal-reporter-phone">-</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <h4>TICKET DETAILS</h4>
+              <div class="details-grid">
+                <div class="detail-row">
+                  <span class="detail-label">Campus:</span>
+                  <span class="detail-value" id="sd-modal-campus">-</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Department:</span>
+                  <span class="detail-value" id="sd-modal-dept">-</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">CCs:</span>
+                  <span class="detail-value" id="sd-modal-cc">-</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Created:</span>
+                  <span class="detail-value" id="sd-modal-created">-</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <h4>SLA TIMER</h4>
+              <div class="sla-timer-large" id="sd-modal-sla-timer">--:--:--</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeTicketModal()">Close</button>
+        </div>
+
+      </div>
+    </div>
+
     <script src="staff-dashboard.js"></script>
 </html>
