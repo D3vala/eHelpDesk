@@ -114,6 +114,7 @@ async function loadTickets() {
         console.error('Error loading tickets:', error);
     }
 }
+window._loadTickets = loadTickets;
 
 // Render tickets in the table
 function renderTickets(tickets) {

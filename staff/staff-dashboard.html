@@ -144,5 +144,24 @@
     </main>
 
     <script type="module" src="staff-dashboard.js"></script>
-  </body>
+    <script>
+      // Fallback: defined outside module so it always works regardless of module load status
+      function handleLogout() {
+        localStorage.clear();
+        window.location.href = "../login.html";
+      }
+      function switchTab(tabType) {
+        var ccdTab = document.getElementById('tab-ccd');
+        var myTab = document.getElementById('tab-my');
+        if (!ccdTab || !myTab) return;
+        if (tabType === 'ccd') {
+          ccdTab.classList.add('active-tab'); ccdTab.classList.remove('inactive-tab');
+          myTab.classList.add('inactive-tab'); myTab.classList.remove('active-tab');
+        } else {
+          myTab.classList.add('active-tab'); myTab.classList.remove('inactive-tab');
+          ccdTab.classList.add('inactive-tab'); ccdTab.classList.remove('active-tab');
+        }
+        if (typeof window._loadTickets === 'function') window._loadTickets();
+      }
+    </script>
 </html>
