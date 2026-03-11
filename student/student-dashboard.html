@@ -9,6 +9,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
     />
+    <!-- Supabase UMD build — works on file:// without a local server -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script>
+      window.supabase = supabase.createClient(
+        'https://ultmtnqbzckmyqffevjv.supabase.co',
+        'sb_publishable_R9_srXtrNCUeemY4PHiU4w_yP4S5cCJ'
+      );
+    </script>
   </head>
   <body>
     <div class="header-top-section">
@@ -29,7 +37,6 @@
             <input type="text" placeholder="Search Tickets" />
           </div>
           <div class="auth-buttons" id="auth-section">
-            <a href="../student/student-dashboard.html" class="btn btn-black">Create Ticket</a>
             <div
               class="profile-container"
               id="profile-menu-wrapper"
@@ -70,7 +77,7 @@
         <form id="ticketForm">
           <div class="input-field">
             <label>Campus Location</label>
-            <select required>
+            <select id="campusSelect" required>
               <option value="">Select a Campus</option>
               <option>Intramuros Campus</option>
               <option>Makati Campus</option>
@@ -79,7 +86,7 @@
 
           <div class="input-field">
             <label>Choose the Concerned Department</label>
-            <select required>
+            <select id="deptSelect" required>
               <option value="">Select a Department</option>
               <option>IT Support</option>
               <option>SOIT</option>
@@ -474,6 +481,6 @@
       </div>
     </div>
 
-    <script type="module" src="student-dashboard.js"></script>
+    <script src="student-dashboard.js"></script>
   </body>
 </html>

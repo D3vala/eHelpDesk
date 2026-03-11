@@ -1,5 +1,4 @@
-// Import Supabase client
-import { supabase } from '../supabase-config.js';
+// Uses window.supabase initialised in HTML (no ES module imports needed)
 
 // 1. DYNAMIC USER LOGO & AUTH LOGIC
 document.addEventListener("DOMContentLoaded", () => {
@@ -199,7 +198,7 @@ function handleLogout() {
 // Tickets API Functions
 async function getTickets() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await window.supabase
       .from('tickets')
       .select('*')
       .order('created_at', { ascending: false });
@@ -218,9 +217,11 @@ async function getTickets() {
 
 async function saveTicket(ticket) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await window.supabase
       .from('tickets')
-      .insert(ticket);
+      .insert(ticket)
+      .select()
+      .single();
     
     if (error) {
       console.error('Error saving ticket:', error);
@@ -236,7 +237,7 @@ async function saveTicket(ticket) {
 
 async function updateTicket(ticketId, updates) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await window.supabase
       .from('tickets')
       .update(updates)
       .eq('id', ticketId);
@@ -255,7 +256,7 @@ async function updateTicket(ticketId, updates) {
 
 async function deleteTicketFromDB(ticketId) {
   try {
-    const { error } = await supabase
+    const { error } = await window.supabase
       .from('tickets')
       .delete()
       .eq('id', ticketId);
@@ -283,6 +284,12 @@ async function loadTickets() {
   }
 }
 
+// Map DB status values to display labels
+function formatStatus(status) {
+  const map = { open: 'Open', in_progress: 'In Progress', breached: 'Breached', resolved: 'Resolved' };
+  return map[status] || status;
+}
+
 // Render tickets in the table
 function renderTickets(tickets) {
   const tbody = document.getElementById('table-body');
@@ -295,14 +302,19 @@ function renderTickets(tickets) {
   }
 
   const filteredTickets = filterTicketsByUser(tickets);
+
+  if (filteredTickets.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-records">No Records to Display</td></tr>';
+    return;
+  }
   
   filteredTickets.forEach(ticket => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${ticket.id}</td>
-      <td>${ticket.subject}</td>
+      <td>${ticket.ticket_id || ticket.id}</td>
+      <td>${ticket.subject || ''}</td>
       <td>${formatDate(ticket.created_at)}</td>
-      <td>${ticket.status}</td>
+      <td><span class="status-pill ${getStatusClass(ticket.status)}">${formatStatus(ticket.status)}</span></td>
       <td>
         <div class="action-group">
           <button class="btn-action view-btn" onclick="viewTicket('${ticket.id}')">View</button>
@@ -317,11 +329,9 @@ function renderTickets(tickets) {
 
 // Filter tickets for the current user
 function filterTicketsByUser(tickets) {
-  const userEmail = localStorage.getItem("userEmail");
-  
-  // Show tickets created by this user
-  return tickets.filter(ticket => 
-    ticket.email === userEmail
+  const userEmail = (localStorage.getItem("userEmail") || '').toLowerCase();
+  return tickets.filter(ticket =>
+    (ticket.reporter_email || '').toLowerCase() === userEmail
   );
 }
 
@@ -341,11 +351,11 @@ function handleStatusFilter() {
 
 // Update statistics
 function updateStats(tickets) {
-  const userEmail = localStorage.getItem("userEmail");
-  const userTickets = tickets.filter(t => t.email === userEmail);
+  const userEmail = (localStorage.getItem("userEmail") || '').toLowerCase();
+  const userTickets = tickets.filter(t => (t.reporter_email || '').toLowerCase() === userEmail);
   const allCount = userTickets.length;
-  const pendingCount = userTickets.filter(t => t.status === 'In Progress').length;
-  const closedCount = userTickets.filter(t => t.status === 'Resolved').length;
+  const pendingCount = userTickets.filter(t => t.status === 'in_progress' || t.status === 'open').length;
+  const closedCount = userTickets.filter(t => t.status === 'resolved').length;
 
   const card1 = document.querySelector('.stat-card:nth-child(1) .stat-number');
   const card2 = document.querySelector('.stat-card:nth-child(2) .stat-number');
@@ -357,9 +367,9 @@ function updateStats(tickets) {
 
 // Utility functions
 function getStatusClass(status) {
-  if (status === 'In Progress') return 'status-progress';
-  if (status === 'Breached') return 'status-breached';
-  if (status === 'Resolved') return 'status-resolved';
+  if (status === 'in_progress' || status === 'open') return 'status-progress';
+  if (status === 'breached') return 'status-breached';
+  if (status === 'resolved') return 'status-resolved';
   return 'status-progress';
 }
 
@@ -377,7 +387,8 @@ async function createTicket(event) {
   const subject = document.querySelector('input[placeholder="Enter subject"]')?.value || "No Subject";
   const description = document.getElementById("editor")?.innerText || "";
   const userFullName = localStorage.getItem("userFullName") || "Anonymous";
-  const userEmail = localStorage.getItem("userEmail") || "unknown@mapua.edu.ph";
+  const userEmail    = localStorage.getItem("userEmail")    || "unknown@mapua.edu.ph";
+  const ccEmails     = ccsRaw.split(',').map(e => e.trim()).filter(Boolean);
 
   const ccEmails = ccs.split(',').map(e => e.trim()).filter(Boolean);
 
@@ -470,12 +481,11 @@ async function viewTicket(ticketId) {
   const ticket = tickets.find(t => t.id === ticketId);
   
   if (ticket) {
-    // Show view ticket modal with ticket details
-    document.getElementById("viewTicketIDDisplay").innerText = `Ticket ${ticket.id}`;
-    document.getElementById("viewCampus").innerText = ticket.campus || "Not Specified";
+    document.getElementById("viewTicketIDDisplay").innerText = `Ticket ${ticket.ticket_id || ticket.id}`;
+    document.getElementById("viewCampus").innerText = ticket.campus_location || "Not Specified";
     document.getElementById("viewDept").innerText = ticket.department || "Not Specified";
     document.getElementById("viewSubject").innerText = ticket.subject || "No Subject";
-    document.getElementById("viewDescription").innerHTML = ticket.description;
+    document.getElementById("viewDescription").innerHTML = ticket.description || '';
     document.getElementById("viewTimeStamp").innerText = formatDate(ticket.created_at);
     
     const overlay = document.getElementById("viewTicketOverlay");
@@ -488,35 +498,37 @@ async function editTicket(ticketId) {
   const ticket = tickets.find(t => t.id === ticketId);
   
   if (ticket) {
-    // Populate form with ticket data for editing
-    document.querySelector("select:first-of-type").value = ticket.campus || "";
-    document.querySelectorAll("select")[1].value = ticket.department || "";
-    document.querySelector('input[placeholder="Select CCs"]').value = ticket.cc || "";
+    document.getElementById("campusSelect").value = ticket.campus_location || "";
+    document.getElementById("deptSelect").value = ticket.department || "";
+    document.querySelector('input[placeholder="Select CCs"]').value = Array.isArray(ticket.cc_emails) ? ticket.cc_emails.join(', ') : (ticket.cc_emails || "");
     document.querySelector('input[placeholder="Enter subject"]').value = ticket.subject || "";
     document.getElementById("editor").innerHTML = ticket.description || "";
     
-    // Show edit mode
     const createBtn = document.querySelector('.form-buttons .btn-black');
     if (createBtn) {
       createBtn.textContent = 'Update Ticket';
       createBtn.onclick = () => updateExistingTicket(ticketId);
     }
+
+    // Scroll to form
+    document.getElementById('ticketForm')?.scrollIntoView({ behavior: 'smooth' });
   }
 }
 
 async function updateExistingTicket(ticketId) {
-  const campus = document.querySelector("select:first-of-type")?.value || "Not Specified";
-  const dept = document.querySelectorAll("select")[1]?.value || "Not Specified";
-  const ccs = document.querySelector('input[placeholder="Select CCs"]')?.value || "none";
-  const subject = document.querySelector('input[placeholder="Enter subject"]')?.value || "No Subject";
+  const campus      = document.getElementById("campusSelect")?.value || '';
+  const dept        = document.getElementById("deptSelect")?.value || '';
+  const ccsRaw      = document.querySelector('input[placeholder="Select CCs"]')?.value || '';
+  const subject     = document.querySelector('input[placeholder="Enter subject"]')?.value || '';
   const description = document.getElementById("editor")?.innerText || "";
+  const placeholder = "Enter description. Type / to open a list";
 
   const updates = {
-    campus: campus,
-    department: dept,
-    cc: ccs,
-    subject: subject,
-    description: description
+    campus_location: campus,
+    department:      dept,
+    cc_emails:       ccsRaw.split(',').map(e => e.trim()).filter(Boolean),
+    subject:         subject,
+    description:     description === placeholder ? '' : description
   };
 
   try {

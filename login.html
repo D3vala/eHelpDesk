@@ -8,6 +8,13 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
     />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script>
+      window.supabase = supabase.createClient(
+        'https://ultmtnqbzckmyqffevjv.supabase.co',
+        'sb_publishable_R9_srXtrNCUeemY4PHiU4w_yP4S5cCJ'
+      );
+    </script>
     <style>
       * {
         box-sizing: border-box;
@@ -614,9 +621,21 @@
       }
 
       // --- DEMO LOGIN FOR BACKWARD COMPATIBILITY ---
-      function handleDemoLogin(email, password, role) {
+      async function handleDemoLogin(email, password, role) {
         const nameMap = { admin: "Administrator", staff: "Staff Member", student: "Student User" };
         const fullName = nameMap[role] || "User";
+
+        // Try to create a real Supabase Auth session so RLS policies work
+        try {
+          const { error } = await window.supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            console.warn('Supabase auth session could not be created for demo account:', error.message);
+            console.warn('DB operations may fail. Create demo accounts in Supabase Auth to fix this.');
+          }
+        } catch (e) {
+          console.warn('Supabase signIn error:', e);
+        }
+
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("userInitial", fullName.charAt(0).toUpperCase());
         localStorage.setItem("userFullName", fullName);
