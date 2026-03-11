@@ -109,9 +109,7 @@ function applyFiltersAndRender() {
     let tickets = filterTicketsByTab(allTicketsCache, tabType);
 
     if (statusFilter) {
-        const statusMap = { open: 'Open', progress: 'In Progress', closed: 'Resolved' };
-        const mapped = statusMap[statusFilter];
-        if (mapped) tickets = tickets.filter(t => t.status === mapped);
+        tickets = tickets.filter(t => t.status === statusFilter);
     }
 
     if (searchTerm) {
@@ -138,23 +136,26 @@ function renderTickets(tickets) {
     tickets.forEach(ticket => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${ticket.id}</td>
+            <td>${ticket.ticket_id || ticket.id}</td>
             <td>${ticket.subject || ''}</td>
             <td>${formatDate(ticket.created_at)}</td>
-            <td>${ticket.reporter_name || ticket.email || 'Unknown'}</td>
-            <td><span class="status-pill ${getStatusClass(ticket.status)}">${ticket.status || ''}</span></td>
+            <td>${ticket.reporter_name || ticket.reporter_email || 'Unknown'}</td>
+            <td><span class="status-pill ${getStatusClass(ticket.status)}">${formatStatus(ticket.status)}</span></td>
         `;
         tbody.appendChild(tr);
     });
 }
 
 function filterTicketsByTab(tickets, tabType) {
-    const userEmail    = (localStorage.getItem('userEmail')    || '').toLowerCase();
-    const userFullName = (localStorage.getItem('userFullName') || '').toLowerCase();
     if (tabType === 'ccd') {
-        return tickets.filter(t => t.cc && t.cc.toLowerCase().includes(userEmail));
+        // Show all accessible tickets (RLS already scopes to dept/assigned)
+        return tickets;
     } else {
-        return tickets.filter(t => t.assignee && t.assignee.toLowerCase().includes(userFullName));
+        // "My Tickets" — assigned to this staff member or CC'd on
+        const userEmail = (localStorage.getItem('userEmail') || '').toLowerCase();
+        return tickets.filter(t =>
+            (Array.isArray(t.cc_emails) && t.cc_emails.map(e => e.toLowerCase()).includes(userEmail))
+        );
     }
 }
 
@@ -166,8 +167,8 @@ function getCurrentTab() {
 // 5. STATS
 function updateStats(filteredTickets) {
     const allCount     = filteredTickets.length;
-    const pendingCount = filteredTickets.filter(t => t.status === 'In Progress').length;
-    const closedCount  = filteredTickets.filter(t => t.status === 'Resolved').length;
+    const pendingCount = filteredTickets.filter(t => t.status === 'in_progress' || t.status === 'open').length;
+    const closedCount  = filteredTickets.filter(t => t.status === 'resolved').length;
     const c1 = document.querySelector('.stat-card:nth-child(1) .stat-number');
     const c2 = document.querySelector('.stat-card:nth-child(2) .stat-number');
     const c3 = document.querySelector('.stat-card:nth-child(3) .stat-number');
@@ -177,10 +178,15 @@ function updateStats(filteredTickets) {
 }
 
 // 6. UTILITIES
+function formatStatus(status) {
+    const map = { open: 'Open', in_progress: 'In Progress', breached: 'Breached', resolved: 'Resolved' };
+    return map[status] || status;
+}
+
 function getStatusClass(status) {
-    if (status === 'In Progress') return 'status-progress';
-    if (status === 'Breached')    return 'status-breached';
-    if (status === 'Resolved')    return 'status-resolved';
+    if (status === 'in_progress' || status === 'open') return 'status-progress';
+    if (status === 'breached')  return 'status-breached';
+    if (status === 'resolved')  return 'status-resolved';
     return 'status-progress';
 }
 
