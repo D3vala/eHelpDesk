@@ -496,10 +496,63 @@ async function viewTicket(ticketId) {
     document.getElementById("viewSubject").innerText = ticket.subject || "No Subject";
     document.getElementById("viewDescription").innerHTML = ticket.description || '';
     document.getElementById("viewTimeStamp").innerText = formatDate(ticket.created_at);
-    
+
+    await loadStudentAttachments(ticketId);
+
     const overlay = document.getElementById("viewTicketOverlay");
     if (overlay) overlay.style.display = "flex";
   }
+}
+
+async function loadStudentAttachments(ticketId) {
+  const container = document.getElementById('viewAttachmentsContainer');
+  const list = document.getElementById('viewAttachmentsList');
+  if (!container || !list) return;
+
+  const { data, error } = await window.supabase
+    .from('attachments')
+    .select('*')
+    .eq('ticket_id', ticketId);
+
+  if (error || !data || data.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  list.innerHTML = '';
+  data.forEach(att => {
+    const hasUrl = att.file_url && att.file_url !== 'pending';
+    const pill = document.createElement(hasUrl ? 'a' : 'span');
+    pill.className = 'attachment-pill';
+    if (hasUrl) {
+      pill.href = att.file_url;
+      pill.target = '_blank';
+      pill.rel = 'noopener noreferrer';
+      pill.download = att.file_name;
+    }
+    const icon = getStudentFileIcon(att.file_type);
+    const size = formatStudentFileSize(att.file_size);
+    pill.innerHTML = `<i class="fa-solid ${icon}"></i> ${att.file_name}${size ? ` <span style="color:#aaa;">(${size})</span>` : ''}${!hasUrl ? ' <span style="color:#f97316;font-size:10px;">no link</span>' : ''}`;
+    list.appendChild(pill);
+  });
+  container.style.display = '';
+}
+
+function getStudentFileIcon(fileType) {
+  if (!fileType) return 'fa-file';
+  if (fileType.startsWith('image/'))        return 'fa-file-image';
+  if (fileType === 'application/pdf')        return 'fa-file-pdf';
+  if (fileType.includes('word'))             return 'fa-file-word';
+  if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('csv'))
+                                             return 'fa-file-excel';
+  return 'fa-file';
+}
+
+function formatStudentFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024)           return `${bytes} B`;
+  if (bytes < 1024 * 1024)    return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 async function editTicket(ticketId) {
