@@ -468,10 +468,7 @@ async function createTicket(event) {
     }
 
     // Send email notifications
-    await Promise.all([
-      sendTicketCreationEmail(saved),
-      sendCCNotificationEmail(saved, 'Ticket Created')
-    ]);
+    await sendTicketCreationEmail(saved);
 
     // Upload any attached files
     if (uploadedFiles.length > 0) {
