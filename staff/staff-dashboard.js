@@ -2,8 +2,88 @@
 
 // 1. GLOBAL FUNCTIONS (accessible from inline onclick handlers)
 function handleLogout() {
-    localStorage.clear();
-    window.location.href = '../login.html';
+  localStorage.clear();
+  window.location.href = "../login.html";
+}
+
+// EmailJS Functions for Staff
+async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
+  try {
+    const templateParams = {
+      to_email: ticket.reporter_email,
+      to_name: ticket.reporter_name,
+      ticket_id: ticket.ticket_id || ticket.id,
+      subject: ticket.subject,
+      old_status: formatStatus(oldStatus),
+      new_status: formatStatus(newStatus),
+      updated_at: new Date().toLocaleString()
+    };
+
+    const result = await emailjs.send(
+      'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
+      'template_status_update', // Replace with your template ID
+      templateParams
+    );
+
+    console.log('Status update email sent:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending status update email:', error);
+    return false;
+  }
+}
+
+async function sendTicketCompletionEmail(ticket) {
+  try {
+    const templateParams = {
+      to_email: ticket.reporter_email,
+      to_name: ticket.reporter_name,
+      ticket_id: ticket.ticket_id || ticket.id,
+      subject: ticket.subject,
+      completed_at: new Date().toLocaleString()
+    };
+
+    const result = await emailjs.send(
+      'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
+      'template_ticket_completed', // Replace with your template ID
+      templateParams
+    );
+
+    console.log('Ticket completion email sent:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending ticket completion email:', error);
+    return false;
+  }
+}
+
+async function sendCCNotificationEmail(ticket, action) {
+  if (!ticket.cc_emails || ticket.cc_emails.length === 0) return;
+
+  for (const ccEmail of ticket.cc_emails) {
+    try {
+      const templateParams = {
+        to_email: ccEmail,
+        to_name: 'CC Recipient',
+        ticket_id: ticket.ticket_id || ticket.id,
+        subject: ticket.subject,
+        action: action,
+        reporter_name: ticket.reporter_name,
+        reporter_email: ticket.reporter_email,
+        updated_at: new Date().toLocaleString()
+      };
+
+      const result = await emailjs.send(
+        'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
+        'template_cc_notification', // Replace with your template ID
+        templateParams
+      );
+
+      console.log(`CC notification email sent to ${ccEmail}:`, result);
+    } catch (error) {
+      console.error(`Error sending CC notification email to ${ccEmail}:`, error);
+    }
+  }
 }
 window.handleLogout = handleLogout;
 
@@ -487,7 +567,7 @@ async function submitStaffMessage() {
         // Get reporter email from the currently displayed ticket
         const { data: ticket } = await window.supabase
             .from('tickets')
-            .select('reporter_email, ticket_id')
+            .select('reporter_email, ticket_id, subject, status')
             .eq('id', currentTicketId)
             .single();
 

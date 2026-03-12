@@ -11,11 +11,18 @@
     />
     <!-- Supabase UMD build — works on file:// without a local server -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <!-- EmailJS library -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
       window.supabase = supabase.createClient(
         'https://ultmtnqbzckmyqffevjv.supabase.co',
         'sb_publishable_R9_srXtrNCUeemY4PHiU4w_yP4S5cCJ'
       );
+      
+      // Initialize EmailJS
+      (function() {
+        emailjs.init("VFUFvwuyZnYKBDz_v"); // Replace with your EmailJS public key
+      })();
     </script>
   </head>
   <body>
@@ -83,6 +90,11 @@
               <option>IT Support</option>
               <option>SOIT</option>
             </select>
+          </div>
+
+          <div class="input-field">
+            <label>Phone Number</label>
+            <input type="tel" placeholder="Enter phone number" />
           </div>
 
           <div class="input-field">

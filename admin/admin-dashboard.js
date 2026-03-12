@@ -145,6 +145,86 @@ function getInitials(name) {
     : name.slice(0, 2).toUpperCase();
 }
 
+// EmailJS Functions for Admin
+async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
+  try {
+    const templateParams = {
+      to_email: ticket.email || ticket.reporter_email,
+      to_name: ticket.reporter_name || ticket.email || 'User',
+      ticket_id: ticket.id,
+      subject: ticket.subject,
+      old_status: oldStatus,
+      new_status: newStatus,
+      updated_at: new Date().toLocaleString()
+    };
+
+    const result = await emailjs.send(
+      'service_51x358n', // Replace with your EmailJS service ID
+      'template_fjegsup', // Replace with your template ID
+      templateParams
+    );
+
+    console.log('Status update email sent:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending status update email:', error);
+    return false;
+  }
+}
+
+async function sendTicketCompletionEmail(ticket) {
+  try {
+    const templateParams = {
+      to_email: ticket.email || ticket.reporter_email,
+      to_name: ticket.reporter_name || ticket.email || 'User',
+      ticket_id: ticket.id,
+      subject: ticket.subject,
+      completed_at: new Date().toLocaleString()
+    };
+
+    const result = await emailjs.send(
+      'service_51x358n', // Replace with your EmailJS service ID
+      'template_fjegsup', // Replace with your template ID
+      templateParams
+    );
+
+    console.log('Ticket completion email sent:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending ticket completion email:', error);
+    return false;
+  }
+}
+
+async function sendCCNotificationEmail(ticket, action) {
+  if (!ticket.cc_emails || ticket.cc_emails.length === 0) return;
+
+  for (const ccEmail of ticket.cc_emails) {
+    try {
+      const templateParams = {
+        to_email: ccEmail,
+        to_name: 'CC Recipient',
+        ticket_id: ticket.id,
+        subject: ticket.subject,
+        action: action,
+        reporter_name: ticket.reporter_name || ticket.email || 'User',
+        reporter_email: ticket.email || ticket.reporter_email,
+        updated_at: new Date().toLocaleString()
+      };
+
+      const result = await emailjs.send(
+        'service_51x358n', // Replace with your EmailJS service ID
+        'template_fjegsup', // Replace with your template ID
+        templateParams
+      );
+
+      console.log(`CC notification email sent to ${ccEmail}:`, result);
+    } catch (error) {
+      console.error(`Error sending CC notification email to ${ccEmail}:`, error);
+    }
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -685,6 +765,7 @@ window.escalateTicket = async function() {
     const confirmed = confirm(`Escalate ticket ${activeTicketId}? This will mark it as Breached and flag it for urgent review.`);
     if (!confirmed) return;
 
+    const oldStatus = ticket.status;
     ticket.status = "Breached";
 
     const now     = new Date();
@@ -698,6 +779,9 @@ window.escalateTicket = async function() {
     });
 
     await saveTicket(ticket);
+
+    // Send escalation email notification
+    await sendStatusUpdateEmail(ticket, oldStatus, "Breached");
 
     // Update modal badge
     const badge = document.getElementById("modal-ticket-status-badge");

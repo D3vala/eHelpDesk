@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Notification - eHelpDesk</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #6c757d;
+            padding-bottom: 20px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        .notification-icon {
+            font-size: 48px;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+        .ticket-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #6c757d;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .label {
+            font-weight: bold;
+            color: #666;
+            width: 30%;
+        }
+        .value {
+            color: #333;
+            width: 70%;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .note {
+            font-size: 12px;
+            color: #888;
+            font-style: italic;
+            margin-top: 15px;
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #6c757d;
+        }
+        .action-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .action-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        .cc-badge {
+            display: inline-block;
+            background: #6c757d;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .reporter-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #adb5bd;
+        }
+        .reporter-title {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">eHelpDesk</div>
+            <div class="notification-icon">📢</div>
+            <h1>Ticket Notification</h1>
+        </div>
+
+        <p>Hello {{to_name}},</p>
+        
+        <p>You are receiving this notification because you have been CC'd on a support ticket. Here are the details:</p>
+
+        <div class="ticket-info">
+            <h3 style="margin-top: 0; color: #333;">Ticket Information</h3>
+            
+            <div class="info-row">
+                <span class="label">Ticket ID:</span>
+                <span class="value">{{ticket_id}}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">Subject:</span>
+                <span class="value">{{subject}}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">Action:</span>
+                <span class="value"><span class="cc-badge">{{action}}</span></span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">Updated:</span>
+                <span class="value">{{updated_at}}</span>
+            </div>
+        </div>
+
+        <div class="reporter-info">
+            <div class="reporter-title">Reported By:</div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 40px; height: 40px; background: #6c757d; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
+                    {{reporter_name[0]}}
+                </div>
+                <div>
+                    <div style="font-weight: bold; color: #333;">{{reporter_name}}</div>
+                    <div style="color: #666; font-size: 12px;">{{reporter_email}}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-box">
+            <div class="action-title">What This Means:</div>
+            <p style="margin: 0; color: #856404;">
+                {% if action == 'Ticket Created' %}
+                A new support ticket has been created and you have been CC'd for awareness.
+                {% elseif action == 'Status Updated' %}
+                The status of the ticket you are CC'd on has been updated.
+                {% elseif action == 'Ticket Resolved' %}
+                The ticket you are CC'd on has been resolved.
+                {% else %}
+                An action has been performed on the ticket you are CC'd on.
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="note">
+            *As a CC recipient, you will receive notifications about updates to this ticket. If you need to take action or have questions, please contact the ticket reporter or support team directly.*
+        </div>
+
+        <div class="footer">
+            <p>eHelpDesk Support System</p>
+            <p>Mapúa University</p>
+            <p style="margin-top: 10px;">This is an automated notification. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
