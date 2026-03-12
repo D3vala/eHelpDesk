@@ -605,6 +605,10 @@ async function viewTicket(ticketId) {
     document.getElementById("viewTimeStamp").innerText = formatDate(ticket.created_at);
 
     await loadStudentAttachments(ticketId);
+    await loadStudentActivityFeed(ticketId);
+
+    const statusTag = document.getElementById('viewStatusTag');
+    if (statusTag) statusTag.textContent = `Status: ${formatStatus(ticket.status)}`;
 
     const overlay = document.getElementById("viewTicketOverlay");
     if (overlay) overlay.style.display = "flex";
@@ -824,4 +828,32 @@ function generateTicketID() {
 function closeViewTicket() {
   const overlay = document.getElementById("viewTicketOverlay");
   if (overlay) overlay.style.display = "none";
+}
+
+async function loadStudentActivityFeed(ticketId) {
+  const feed = document.getElementById('student-activity-feed');
+  if (!feed) return;
+  feed.innerHTML = '';
+
+  const { data, error } = await window.supabase
+    .from('activity_log')
+    .select('*')
+    .eq('ticket_id', ticketId)
+    .eq('action', 'email')
+    .order('created_at', { ascending: true });
+
+  if (error || !data || data.length === 0) return;
+
+  data.forEach(act => {
+    const colonIdx = act.description ? act.description.indexOf(': ') : -1;
+    const author  = colonIdx >= 0 ? act.description.slice(0, colonIdx) : 'Staff';
+    const message = colonIdx >= 0 ? act.description.slice(colonIdx + 2) : (act.description || '');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `
+      <span class="log-user" style="color:#1976d2;"><i class="fa-solid fa-envelope" style="margin-right:4px;"></i>${author}</span>
+      <span class="log-text">${message} <em style="color:#aaa;font-size:11px;">— ${new Date(act.created_at).toLocaleString()}</em></span>
+    `;
+    feed.appendChild(entry);
+  });
 }

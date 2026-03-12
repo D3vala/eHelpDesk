@@ -326,6 +326,10 @@ async function viewTicketDetails(id) {
     // Activity
     await loadStaffActivityFeed(id);
 
+    // Status select
+    const statusSelect = document.getElementById('sd-modal-status-select');
+    if (statusSelect) statusSelect.value = ticket.status || 'open';
+
     // Reset reply box
     switchStaffReplyTab('email');
     document.getElementById('sd-reply-textarea').value = '';
@@ -460,6 +464,72 @@ function closeTicketModal() {
 }
 window.closeTicketModal = closeTicketModal;
 
+async function saveStaffChanges() {
+    if (!currentTicketId) return;
+    const statusSelect = document.getElementById('sd-modal-status-select');
+    const newStatus = statusSelect?.value;
+    if (!newStatus) return;
+
+    const staffName = localStorage.getItem('userFullName') || 'Staff';
+    const btn = document.querySelector('.modal-footer button:last-child');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+    const { data: ticket } = await window.supabase
+        .from('tickets')
+        .select('status, reporter_email, ticket_id')
+        .eq('id', currentTicketId)
+        .single();
+
+    const statusChanged = ticket && ticket.status !== newStatus;
+
+    const { error } = await window.supabase
+        .from('tickets')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', currentTicketId);
+
+    if (error) {
+        alert('Failed to save changes.');
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+        return;
+    }
+
+    await window.supabase.from('activity_log').insert({
+        ticket_id:   currentTicketId,
+        action:      'status_changed',
+        description: `${staffName} updated status to ${newStatus}`,
+        metadata:    { old_status: ticket?.status, new_status: newStatus }
+    });
+
+    if (statusChanged && ticket?.reporter_email) {
+        try {
+            await emailjs.send(
+                'service_x81e8u7',
+                'template_4cqrvwy',
+                {
+                    to_email:   ticket.reporter_email,
+                    ticket_id:  ticket.ticket_id || ('#' + currentTicketId),
+                    staff_name: staffName,
+                    message:    `Your ticket status has been updated to: ${formatStatus(newStatus)}`,
+                },
+                { publicKey: 'tuIeGDI1S5x_SUbZI' }
+            );
+        } catch (err) {
+            console.error('Status notification email failed:', err);
+        }
+    }
+
+    const badge = document.getElementById('sd-modal-status-badge');
+    if (badge) {
+        badge.className = 'status-pill ' + getStatusClass(newStatus);
+        badge.textContent = formatStatus(newStatus);
+    }
+    await loadStaffActivityFeed(currentTicketId);
+    await loadTickets();
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+    alert('Changes saved!');
+}
+window.saveStaffChanges = saveStaffChanges;
+
 function switchStaffReplyTab(mode) {
     staffReplyMode = mode;
     const tabEmail = document.getElementById('sd-tab-email');
@@ -510,7 +580,7 @@ async function submitStaffMessage() {
 
         try {
             await emailjs.send(
-                'service_05cka72',
+                'service_x81e8u7',
                 'template_4cqrvwy',
                 {
                     to_email:   ticket.reporter_email,

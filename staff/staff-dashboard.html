@@ -241,12 +241,22 @@
               <h4>SLA TIMER</h4>
               <div class="sla-timer-large" id="sd-modal-sla-timer">--:--:--</div>
             </div>
+
+            <div class="sidebar-section">
+              <h4>STATUS</h4>
+              <select id="sd-modal-status-select" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #eaeaea;font-size:13px;color:#111;background:#fff;">
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
           </div>
 
         </div>
 
         <div class="modal-footer">
           <button class="btn-cancel" onclick="closeTicketModal()">Close</button>
+          <button style="background:#111;color:#fff;padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;" onclick="saveStaffChanges()">Save Changes</button>
         </div>
 
       </div>
