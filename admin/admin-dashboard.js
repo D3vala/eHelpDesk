@@ -745,6 +745,28 @@ window.saveTicketUpdates = async function() {
     }
 
     await saveTicket(ticket);
+
+    if (changes.some(c => c.startsWith('Status'))) {
+      const reporterEmail = ticket.reporter_email || ticket.email;
+      if (reporterEmail) {
+        try {
+          await emailjs.send(
+            'service_x81e8u7',
+            'template_4cqrvwy',
+            {
+              to_email:   reporterEmail,
+              ticket_id:  ticket.ticket_id || ticket.id,
+              staff_name: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
+              message:    `Your ticket status has been updated to: ${ticket.status}`,
+            },
+            { publicKey: 'tuIeGDI1S5x_SUbZI' }
+          );
+        } catch (err) {
+          console.error('Status notification email failed:', err);
+        }
+      }
+    }
+
     closeModal();
     renderTicketTable();
   } catch (error) {

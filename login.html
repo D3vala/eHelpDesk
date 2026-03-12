@@ -362,12 +362,14 @@
 
         <div class="field-group">
           <label>Email Address</label>
-          <input type="email" placeholder="name@mymail.mapua.edu.ph" />
+          <input type="email" id="reset-email" placeholder="name@mymail.mapua.edu.ph" />
         </div>
 
-        <button class="btn-primary" onclick="showPage('page-security')">
-          Send Reset Code
+        <button class="btn-primary" onclick="handlePasswordReset()">
+          Send Reset Link
         </button>
+
+        <div id="reset-banner" style="display:none;margin-top:12px;padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.5;"></div>
 
         <a class="back-link" onclick="showPage('page-login')">
           <i class="fa-solid fa-arrow-left"></i> Back to Login
@@ -390,21 +392,20 @@
 
         <div class="field-group">
           <label>New Password</label>
-          <input type="password" placeholder="Min. 8 characters" />
+          <input type="password" id="new-password-input" placeholder="Min. 8 characters" />
         </div>
 
         <div class="field-group">
           <label>Confirm Password</label>
-          <input type="password" placeholder="Confirm your new password" />
+          <input type="password" id="confirm-password-input" placeholder="Confirm your new password" />
         </div>
+
+        <div id="new-password-banner" style="display:none;margin-top:4px;margin-bottom:8px;padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.5;"></div>
 
         <button
           class="btn-primary"
           style="margin-top: 20px"
-          onclick="
-            alert('Password successfully reset! Please sign in.');
-            showPage('page-login');
-          "
+          onclick="handleSetNewPassword()"
         >
           Reset Password
         </button>
@@ -526,6 +527,13 @@
     </div>
 
     <script>
+      // --- Listen for PASSWORD_RECOVERY event and show new-password page ---
+      window.supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          showPage('page-new-password');
+        }
+      });
+
       // --- Enter key submits login ---
       document.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && document.getElementById("page-login").classList.contains("active")) {
@@ -685,6 +693,78 @@
           handleDemoLogin(email, password, 'student');
         } else {
           alert("Please use a Mapúa email.");
+        }
+      }
+
+      // --- SET NEW PASSWORD (after clicking reset link in email) ---
+      async function handleSetNewPassword() {
+        const pw  = document.getElementById('new-password-input').value;
+        const pw2 = document.getElementById('confirm-password-input').value;
+        const banner = document.getElementById('new-password-banner');
+        banner.style.display = 'none';
+
+        if (!pw || pw.length < 8) {
+          banner.style.cssText = 'display:block;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px 14px;border-radius:8px;font-size:13px;';
+          banner.textContent = 'Password must be at least 8 characters.';
+          return;
+        }
+        if (pw !== pw2) {
+          banner.style.cssText = 'display:block;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px 14px;border-radius:8px;font-size:13px;';
+          banner.textContent = 'Passwords do not match.';
+          return;
+        }
+        try {
+          const { error } = await window.supabase.auth.updateUser({ password: pw });
+          if (error) {
+            banner.style.cssText = 'display:block;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px 14px;border-radius:8px;font-size:13px;';
+            banner.textContent = 'Error: ' + error.message;
+          } else {
+            banner.style.cssText = 'display:block;background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;padding:12px 14px;border-radius:8px;font-size:13px;';
+            banner.textContent = 'Password reset successfully! Redirecting to login...';
+            setTimeout(() => {
+              window.location.href = window.location.pathname;
+            }, 2000);
+          }
+        } catch (e) {
+          banner.style.cssText = 'display:block;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px 14px;border-radius:8px;font-size:13px;';
+          banner.textContent = 'Error: ' + e.message;
+        }
+      }
+
+      // --- PASSWORD RESET ---
+      async function handlePasswordReset() {
+        const email = document.getElementById('reset-email').value.trim().toLowerCase();
+        const banner = document.getElementById('reset-banner');
+        banner.style.display = 'none';
+        if (!email) {
+          banner.style.background = '#fef2f2';
+          banner.style.border = '1px solid #fecaca';
+          banner.style.color = '#991b1b';
+          banner.textContent = 'Please enter your email address.';
+          banner.style.display = 'block';
+          return;
+        }
+        try {
+          const redirectTo = window.location.href.split('#')[0].split('?')[0];
+          const { error } = await window.supabase.auth.resetPasswordForEmail(email, { redirectTo });
+          banner.style.display = 'block';
+          if (error) {
+            banner.style.background = '#fef2f2';
+            banner.style.border = '1px solid #fecaca';
+            banner.style.color = '#991b1b';
+            banner.textContent = 'Error: ' + error.message;
+          } else {
+            banner.style.background = '#f0fdf4';
+            banner.style.border = '1px solid #bbf7d0';
+            banner.style.color = '#14532d';
+            banner.textContent = 'Reset link sent! Please check your inbox and click the link.';
+          }
+        } catch (e) {
+          banner.style.background = '#fef2f2';
+          banner.style.border = '1px solid #fecaca';
+          banner.style.color = '#991b1b';
+          banner.textContent = 'Error: ' + e.message;
+          banner.style.display = 'block';
         }
       }
 
