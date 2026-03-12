@@ -20,7 +20,7 @@ async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
     };
 
     const result = await emailjs.send(
-      'service_51x358n', // Replace with your EmailJS service ID
+      'service_jizioq5', // Replace with your EmailJS service ID
       'template_fjegsup', // Replace with your template ID
       templateParams
     );
@@ -452,7 +452,7 @@ async function saveStaffChanges() {
     if (statusChanged && ticket?.reporter_email) {
         try {
             await emailjs.send(
-                'service_51x358n',
+                'service_jizioq5',
                 'template_fjegsup',
                 {
                     to_email:   ticket.reporter_email,
@@ -529,7 +529,7 @@ async function submitStaffMessage() {
 
         try {
             await emailjs.send(
-                'service_51x358n',
+                'service_jizioq5',
                 'template_4cqrvwy',
                 {
                     to_email:   ticket.reporter_email,
