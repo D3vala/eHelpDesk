@@ -13,8 +13,8 @@ const USERS_TABLE = "users";
 
 // Tracks which ticket is currently open in the modal
 let activeTicketId = null;
-// Tracks which reply mode is active: 'sms' | 'internal'
-let activeReplyMode = "sms";
+// Tracks which reply mode is active: 'email' | 'internal'
+let activeReplyMode = "email";
 // Tracks edit mode for the staff modal
 let editingStaffId = null;
 // Navigation state
@@ -433,7 +433,7 @@ window.openTicketModal = async function(ticketId) {
     if (!ticket) return;
 
     activeTicketId  = ticketId;
-    activeReplyMode = "sms";
+    activeReplyMode = "email";
 
     // Header
     document.getElementById("modal-ticket-id").textContent      = ticket.id;
@@ -511,7 +511,6 @@ window.openTicketModal = async function(ticketId) {
     document.getElementById("modal-reporter-initials").textContent = getInitials(reporterName);
     document.getElementById("modal-reporter-name").textContent     = reporterName;
     document.getElementById("modal-reporter-email").textContent    = ticket.email || "—";
-    document.getElementById("modal-reporter-phone").textContent    = reporter.phone || "—";
 
     // Ticket details
     const details = ticket.details || {};
@@ -538,7 +537,7 @@ window.openTicketModal = async function(ticketId) {
     }
 
     // Reply tab state reset
-    switchReplyTab("sms");
+    switchReplyTab("email");
 
     // Render activity feed
     renderActivityFeed(ticket);
@@ -582,17 +581,17 @@ window.closeAttachmentPreview = closeAttachmentPreview;
 window.switchReplyTab = function(mode) {
   activeReplyMode = mode;
 
-  document.getElementById("tab-sms").classList.toggle("active",      mode === "sms");
+  document.getElementById("tab-email").classList.toggle("active",    mode === "email");
   document.getElementById("tab-internal").classList.toggle("active", mode === "internal");
 
   const textarea = document.getElementById("reply-textarea");
   const btn      = document.querySelector(".submit-reply-btn");
   const counter  = document.getElementById("char-count");
 
-  if (mode === "sms") {
-    textarea.placeholder = "Type message to send via SMS...";
+  if (mode === "email") {
+    textarea.placeholder = "Type message to send via email...";
     if (btn)     btn.textContent = "Send Message";
-    if (counter) counter.style.display = "";
+    if (counter) counter.style.display = "none";
   } else {
     textarea.placeholder = "Write an internal note (not visible to the student)...";
     if (btn)     btn.textContent = "Add Note";
@@ -604,13 +603,7 @@ window.switchReplyTab = function(mode) {
 };
 
 window.updateCharCount = function() {
-  if (activeReplyMode !== "sms") return;
-  const textarea = document.getElementById("reply-textarea");
-  const counter  = document.getElementById("char-count");
-  if (!textarea || !counter) return;
-  const remaining = 160 - textarea.value.length;
-  counter.textContent = `${remaining} char${remaining !== 1 ? "s" : ""} left`;
-  counter.style.color = remaining < 20 ? "#e53935" : "";
+  // char count only used for email mode - no hard limit for email
 };
 
 window.submitMessage = async function() {
@@ -745,7 +738,7 @@ function renderActivityFeed(ticket) {
     const isInternal = a.type === "internal";
     const iconClass  = isSystem   ? "fa-solid fa-gear"
                      : isInternal ? "fa-solid fa-lock"
-                     : "fa-solid fa-comment-sms";
+                     : "fa-solid fa-envelope";
     const labelColor = isSystem   ? "#888"
                      : isInternal ? "#e67e22"
                      : "#1976d2";
