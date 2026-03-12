@@ -20,7 +20,7 @@ async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
     };
 
     const result = await emailjs.send(
-      'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
+      'service_51x358nfemaz', // Replace with your EmailJS service ID
       'template_status_update', // Replace with your template ID
       templateParams
     );
@@ -44,7 +44,7 @@ async function sendTicketCompletionEmail(ticket) {
     };
 
     const result = await emailjs.send(
-      'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
+      'service_51x358nfemaz', // Replace with your EmailJS service ID
       'template_ticket_completed', // Replace with your template ID
       templateParams
     );
@@ -74,7 +74,7 @@ async function sendCCNotificationEmail(ticket, action) {
       };
 
       const result = await emailjs.send(
-        'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
+        'service_51x358nfemaz', // Replace with your EmailJS service ID
         'template_cc_notification', // Replace with your template ID
         templateParams
       );
