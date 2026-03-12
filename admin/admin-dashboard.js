@@ -145,26 +145,33 @@ function getInitials(name) {
     : name.slice(0, 2).toUpperCase();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EMAILJS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Account 1 — Replies & Ticket Creation
+const EMAILJS_ACCT1_SERVICE  = 'service_x81e8u7';
+const EMAILJS_ACCT1_KEY      = 'tuIeGDI1S5x_SUbZI';
+const EMAILJS_REPLY_TEMPLATE = 'template_4cqrvwy';
+
+// Account 2 — Status Updates, Completion & CC Notifications
+const EMAILJS_ACCT2_SERVICE   = 'service_t2mqqyk';
+const EMAILJS_ACCT2_KEY       = 'GXadls4W2_hI1JF8c';
+const EMAILJS_STATUS_TEMPLATE = 'template_wbarg4o';
+
 // EmailJS Functions for Admin
 async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
   try {
-    const templateParams = {
-      to_email: ticket.email || ticket.reporter_email,
-      to_name: ticket.reporter_name || ticket.email || 'User',
-      ticket_id: ticket.id,
-      subject: ticket.subject,
+    await emailjs.send(EMAILJS_ACCT2_SERVICE, EMAILJS_STATUS_TEMPLATE, {
+      to_email:   ticket.email || ticket.reporter_email,
+      to_name:    ticket.reporter_name || ticket.email || 'User',
+      ticket_id:  ticket.id,
+      subject:    ticket.subject,
       old_status: oldStatus,
       new_status: newStatus,
       updated_at: new Date().toLocaleString()
-    };
-
-    const result = await emailjs.send(
-      'service_51x358n', // Replace with your EmailJS service ID
-      'template_fjegsup', // Replace with your template ID
-      templateParams
-    );
-
-    console.log('Status update email sent:', result);
+    }, { publicKey: EMAILJS_ACCT2_KEY });
+    console.log('Status update email sent.');
     return true;
   } catch (error) {
     console.error('Error sending status update email:', error);
@@ -174,21 +181,14 @@ async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
 
 async function sendTicketCompletionEmail(ticket) {
   try {
-    const templateParams = {
-      to_email: ticket.email || ticket.reporter_email,
-      to_name: ticket.reporter_name || ticket.email || 'User',
-      ticket_id: ticket.id,
-      subject: ticket.subject,
+    await emailjs.send(EMAILJS_ACCT2_SERVICE, EMAILJS_STATUS_TEMPLATE, {
+      to_email:     ticket.email || ticket.reporter_email,
+      to_name:      ticket.reporter_name || ticket.email || 'User',
+      ticket_id:    ticket.id,
+      subject:      ticket.subject,
       completed_at: new Date().toLocaleString()
-    };
-
-    const result = await emailjs.send(
-      'service_51x358n', // Replace with your EmailJS service ID
-      'template_fjegsup', // Replace with your template ID
-      templateParams
-    );
-
-    console.log('Ticket completion email sent:', result);
+    }, { publicKey: EMAILJS_ACCT2_KEY });
+    console.log('Ticket completion email sent.');
     return true;
   } catch (error) {
     console.error('Error sending ticket completion email:', error);
@@ -198,27 +198,19 @@ async function sendTicketCompletionEmail(ticket) {
 
 async function sendCCNotificationEmail(ticket, action) {
   if (!ticket.cc_emails || ticket.cc_emails.length === 0) return;
-
   for (const ccEmail of ticket.cc_emails) {
     try {
-      const templateParams = {
-        to_email: ccEmail,
-        to_name: 'CC Recipient',
-        ticket_id: ticket.id,
-        subject: ticket.subject,
-        action: action,
+      await emailjs.send(EMAILJS_ACCT2_SERVICE, EMAILJS_STATUS_TEMPLATE, {
+        to_email:      ccEmail,
+        to_name:       'CC Recipient',
+        ticket_id:     ticket.id,
+        subject:       ticket.subject,
+        action:        action,
         reporter_name: ticket.reporter_name || ticket.email || 'User',
         reporter_email: ticket.email || ticket.reporter_email,
-        updated_at: new Date().toLocaleString()
-      };
-
-      const result = await emailjs.send(
-        'service_51x358n', // Replace with your EmailJS service ID
-        'template_fjegsup', // Replace with your template ID
-        templateParams
-      );
-
-      console.log(`CC notification email sent to ${ccEmail}:`, result);
+        updated_at:    new Date().toLocaleString()
+      }, { publicKey: EMAILJS_ACCT2_KEY });
+      console.log(`CC notification email sent to ${ccEmail}.`);
     } catch (error) {
       console.error(`Error sending CC notification email to ${ccEmail}:`, error);
     }
@@ -707,25 +699,27 @@ window.submitMessage = async function() {
       }
       const btn = document.querySelector('.submit-reply-btn');
       if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+      const staffName = `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`;
+      const replySubject = `[eHelpDesk] Reply on Ticket #${ticket.id}`;
+      const replyBody = `
+        <p>Hello,</p>
+        <p>You have a new reply from <strong>${staffName}</strong> on ticket <strong>#${ticket.id}: ${ticket.subject}</strong>.</p>
+        <p>${text}</p>
+        <br><p>— eHelpDesk Support Team</p>
+      `;
       try {
-        await emailjs.send(
-          'service_x81e8u7',
-          'template_4cqrvwy',
-          {
-            to_email:   reporterEmail,
-            ticket_id:  ticket.id,
-            staff_name: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
-            message:    text,
-          },
-          { publicKey: 'tuIeGDI1S5x_SUbZI' }
-        );
+        await emailjs.send(EMAILJS_ACCT1_SERVICE, EMAILJS_REPLY_TEMPLATE, {
+          to_email:   reporterEmail,
+          ticket_id:  ticket.id,
+          staff_name: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
+          message:    text,
+        }, { publicKey: EMAILJS_ACCT1_KEY });
       } catch (err) {
         alert('Failed to send email: ' + (err.text || err.message || 'Unknown error'));
         if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
         return;
       }
-      const btn2 = document.querySelector('.submit-reply-btn');
-      if (btn2) { btn2.disabled = false; btn2.textContent = 'Send Message'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
     }
 
     const now     = new Date();
@@ -833,18 +827,25 @@ window.saveTicketUpdates = async function() {
     if (changes.some(c => c.startsWith('Status'))) {
       const reporterEmail = ticket.reporter_email || ticket.email;
       if (reporterEmail) {
+        const staffName = `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`;
+        const statusSubject = `[eHelpDesk] Ticket #${ticket.id} Status Updated`;
+        const statusBody = `
+          <p>Hello,</p>
+          <p>Your ticket <strong>#${ticket.id}: ${ticket.subject}</strong> status has been updated to: <strong>${ticket.status}</strong>.</p>
+          <p>Updated by: ${staffName}</p>
+          <br><p>— eHelpDesk Support Team</p>
+        `;
         try {
-          await emailjs.send(
-            'service_x81e8u7',
-            'template_4cqrvwy',
-            {
+          if (ticket.status === 'Resolved' || ticket.status === 'resolved') {
+            await sendTicketCompletionEmail(ticket);
+          } else {
+            await emailjs.send(EMAILJS_ACCT2_SERVICE, EMAILJS_STATUS_TEMPLATE, {
               to_email:   reporterEmail,
               ticket_id:  ticket.ticket_id || ticket.id,
               staff_name: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
               message:    `Your ticket status has been updated to: ${ticket.status}`,
-            },
-            { publicKey: 'tuIeGDI1S5x_SUbZI' }
-          );
+            }, { publicKey: EMAILJS_ACCT2_KEY });
+          }
         } catch (err) {
           console.error('Status notification email failed:', err);
         }

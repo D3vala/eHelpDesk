@@ -6,26 +6,33 @@ function handleLogout() {
   window.location.href = "../login.html";
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EMAILJS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Account 1 — Replies & Ticket Creation
+const EMAILJS_ACCT1_SERVICE  = 'service_x81e8u7';
+const EMAILJS_ACCT1_KEY      = 'tuIeGDI1S5x_SUbZI';
+const EMAILJS_REPLY_TEMPLATE = 'template_4cqrvwy';
+
+// Account 2 — Status Updates, Completion & CC Notifications
+const EMAILJS_ACCT2_SERVICE   = 'service_t2mqqyk';
+const EMAILJS_ACCT2_KEY       = 'GXadls4W2_hI1JF8c';
+const EMAILJS_STATUS_TEMPLATE = 'template_wbarg4o';
+
 // EmailJS Functions for Staff
 async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
   try {
-    const templateParams = {
-      to_email: ticket.reporter_email,
-      to_name: ticket.reporter_name,
-      ticket_id: ticket.ticket_id || ticket.id,
-      subject: ticket.subject,
+    await emailjs.send(EMAILJS_ACCT2_SERVICE, EMAILJS_STATUS_TEMPLATE, {
+      to_email:   ticket.reporter_email,
+      to_name:    ticket.reporter_name,
+      ticket_id:  ticket.ticket_id || ticket.id,
+      subject:    ticket.subject,
       old_status: formatStatus(oldStatus),
       new_status: formatStatus(newStatus),
       updated_at: new Date().toLocaleString()
-    };
-
-    const result = await emailjs.send(
-      'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
-      'template_status_update', // Replace with your template ID
-      templateParams
-    );
-
-    console.log('Status update email sent:', result);
+    }, { publicKey: EMAILJS_ACCT2_KEY });
+    console.log('Status update email sent.');
     return true;
   } catch (error) {
     console.error('Error sending status update email:', error);
@@ -34,52 +41,40 @@ async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
 }
 
 async function sendTicketCompletionEmail(ticket) {
+  console.log('sendTicketCompletionEmail called with:', ticket);
   try {
-    const templateParams = {
-      to_email: ticket.reporter_email,
-      to_name: ticket.reporter_name,
-      ticket_id: ticket.ticket_id || ticket.id,
-      subject: ticket.subject,
+    const result = await emailjs.send(EMAILJS_ACCT2_SERVICE, EMAILJS_STATUS_TEMPLATE, {
+      to_email:     ticket.reporter_email,
+      to_name:      ticket.reporter_name,
+      ticket_id:    ticket.ticket_id || ticket.id,
+      subject:      ticket.subject,
       completed_at: new Date().toLocaleString()
-    };
-
-    const result = await emailjs.send(
-      'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
-      'template_ticket_completed', // Replace with your template ID
-      templateParams
-    );
-
-    console.log('Ticket completion email sent:', result);
+    }, { publicKey: EMAILJS_ACCT2_KEY });
+    console.log('Ticket completion email sent. Result:', result);
+    alert('Completion email sent to: ' + ticket.reporter_email);
     return true;
   } catch (error) {
     console.error('Error sending ticket completion email:', error);
+    alert('EMAIL FAILED: ' + (error.text || error.message || JSON.stringify(error)));
     return false;
   }
 }
 
 async function sendCCNotificationEmail(ticket, action) {
   if (!ticket.cc_emails || ticket.cc_emails.length === 0) return;
-
   for (const ccEmail of ticket.cc_emails) {
     try {
-      const templateParams = {
-        to_email: ccEmail,
-        to_name: 'CC Recipient',
-        ticket_id: ticket.ticket_id || ticket.id,
-        subject: ticket.subject,
-        action: action,
-        reporter_name: ticket.reporter_name,
+      await emailjs.send(EMAILJS_ACCT2_SERVICE, EMAILJS_STATUS_TEMPLATE, {
+        to_email:       ccEmail,
+        to_name:        'CC Recipient',
+        ticket_id:      ticket.ticket_id || ticket.id,
+        subject:        ticket.subject,
+        action:         action,
+        reporter_name:  ticket.reporter_name,
         reporter_email: ticket.reporter_email,
-        updated_at: new Date().toLocaleString()
-      };
-
-      const result = await emailjs.send(
-        'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
-        'template_cc_notification', // Replace with your template ID
-        templateParams
-      );
-
-      console.log(`CC notification email sent to ${ccEmail}:`, result);
+        updated_at:     new Date().toLocaleString()
+      }, { publicKey: EMAILJS_ACCT2_KEY });
+      console.log(`CC notification email sent to ${ccEmail}.`);
     } catch (error) {
       console.error(`Error sending CC notification email to ${ccEmail}:`, error);
     }
@@ -476,7 +471,7 @@ async function saveStaffChanges() {
 
     const { data: ticket } = await window.supabase
         .from('tickets')
-        .select('status, reporter_email, ticket_id')
+        .select('status, reporter_email, reporter_name, ticket_id, subject')
         .eq('id', currentTicketId)
         .single();
 
@@ -501,20 +496,12 @@ async function saveStaffChanges() {
     });
 
     if (statusChanged && ticket?.reporter_email) {
-        try {
-            await emailjs.send(
-                'service_x81e8u7',
-                'template_4cqrvwy',
-                {
-                    to_email:   ticket.reporter_email,
-                    ticket_id:  ticket.ticket_id || ('#' + currentTicketId),
-                    staff_name: staffName,
-                    message:    `Your ticket status has been updated to: ${formatStatus(newStatus)}`,
-                },
-                { publicKey: 'tuIeGDI1S5x_SUbZI' }
-            );
-        } catch (err) {
-            console.error('Status notification email failed:', err);
+        if (newStatus === 'resolved') {
+            const sent = await sendTicketCompletionEmail({ ...ticket, status: newStatus });
+            if (!sent) console.error('Ticket completion email failed.');
+        } else {
+            const sent = await sendStatusUpdateEmail(ticket, ticket.status, newStatus);
+            if (!sent) console.error('Status notification email failed.');
         }
     }
 
@@ -579,19 +566,13 @@ async function submitStaffMessage() {
         if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
 
         try {
-            await emailjs.send(
-                'service_x81e8u7',
-                'template_4cqrvwy',
-                {
-                    to_email:   ticket.reporter_email,
-                    ticket_id:  ticket.ticket_id || ('#' + currentTicketId),
-                    staff_name: staffName,
-                    message:    text,
-                },
-                { publicKey: 'tuIeGDI1S5x_SUbZI' }
-            );
+            await emailjs.send(EMAILJS_ACCT1_SERVICE, EMAILJS_REPLY_TEMPLATE, {
+                to_email:   ticket.reporter_email,
+                ticket_id:  ticket.ticket_id || ('#' + currentTicketId),
+                staff_name: staffName,
+                message:    text,
+            }, { publicKey: EMAILJS_ACCT1_KEY });
         } catch (err) {
-            console.error('Email send error:', err);
             alert('Failed to send email: ' + (err.text || err.message || 'Unknown error'));
             if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send Message'; }
             return;

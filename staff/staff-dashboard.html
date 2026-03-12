@@ -10,6 +10,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
+      window.addEventListener('load', function () {
+        emailjs.init('tuIeGDI1S5x_SUbZI');
+      });
+    </script>
+    <script>
       window.supabase = supabase.createClient(
         'https://ultmtnqbzckmyqffevjv.supabase.co',
         'sb_publishable_R9_srXtrNCUeemY4PHiU4w_yP4S5cCJ'

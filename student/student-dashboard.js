@@ -205,15 +205,17 @@ async function sendTicketCreationEmail(ticket) {
     };
 
     const result = await emailjs.send(
-      'service_51x358n', // Replace with your EmailJS service ID
-      'template_orx8boh', // Replace with your template ID
-      templateParams
+      'service_x81e8u7',
+      'template_xvyvg37',
+      templateParams,
+      { publicKey: 'tuIeGDI1S5x_SUbZI' }
     );
 
     console.log('Ticket creation email sent:', result);
     return true;
   } catch (error) {
     console.error('Error sending ticket creation email:', error);
+    alert('Ticket created but email failed: ' + (error.text || error.message || JSON.stringify(error)));
     return false;
   }
 }
@@ -231,9 +233,10 @@ async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
     };
 
     const result = await emailjs.send(
-      'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
-      'template_status_update', // Replace with your template ID
-      templateParams
+      'service_t2mqqyk',
+      'template_wbarg4o',
+      templateParams,
+      { publicKey: 'GXadls4W2_hI1JF8c' }
     );
 
     console.log('Status update email sent:', result);
@@ -255,9 +258,10 @@ async function sendTicketCompletionEmail(ticket) {
     };
 
     const result = await emailjs.send(
-      'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
-      'template_ticket_completed', // Replace with your template ID
-      templateParams
+      'service_t2mqqyk',
+      'template_wbarg4o',
+      templateParams,
+      { publicKey: 'GXadls4W2_hI1JF8c' }
     );
 
     console.log('Ticket completion email sent:', result);
@@ -285,9 +289,10 @@ async function sendCCNotificationEmail(ticket, action) {
       };
 
       const result = await emailjs.send(
-        'YOUR_SERVICE_ID', // Replace with your EmailJS service ID
-        'template_cc_notification', // Replace with your template ID
-        templateParams
+        'service_t2mqqyk',
+        'template_wbarg4o',
+        templateParams,
+        { publicKey: 'GXadls4W2_hI1JF8c' }
       );
 
       console.log(`CC notification email sent to ${ccEmail}:`, result);
