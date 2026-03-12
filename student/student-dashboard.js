@@ -214,7 +214,6 @@ async function sendTicketCreationEmail(ticket) {
     return true;
   } catch (error) {
     console.error('Error sending ticket creation email:', error);
-    console.error('Template params:', templateParams);
     return false;
   }
 }
