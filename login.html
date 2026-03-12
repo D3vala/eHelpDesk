@@ -606,7 +606,7 @@
             } else if (role === 'staff') {
               window.location.href = "staff/staff-dashboard.html";
             } else {
-              window.location.href = "student/student-dashboard.html";
+              window.location.href = "student/index.html";
             }
           } else {
             alert("Login failed: " + result.error);
@@ -644,7 +644,7 @@
 
         const dashboardPath = role === 'admin' ? "admin/admin-dashboard.html" : 
                              role === 'staff' ? "staff/staff-dashboard.html" : 
-                             "student/student-dashboard.html";
+                             "student/index.html";
         
         window.location.href = dashboardPath;
       }
