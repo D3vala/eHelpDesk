@@ -109,6 +109,19 @@
             color: #0066cc;
             margin-bottom: 5px;
         }
+        .resolved-box {
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .resolved-title {
+            font-weight: bold;
+            color: #1b5e20;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -147,6 +160,14 @@
             </div>
         </div>
 
+        {% if new_status == 'Resolved' %}
+        <div class="resolved-box">
+            <div class="resolved-title">🎉 Great News! Your Ticket Has Been Resolved</div>
+            <p style="margin: 0; color: #333;">
+                Your support ticket has been successfully resolved. If you're still experiencing issues or need further assistance, please don't hesitate to contact us or create a new ticket.
+            </p>
+        </div>
+        {% else %}
         <div class="highlight-box">
             <div class="highlight-title">What This Means:</div>
             <p style="margin: 0;">
@@ -154,13 +175,12 @@
                 Your ticket is now being actively worked on by our support team.
                 {% elseif new_status == 'Breached' %}
                 <strong>Attention Required:</strong> This ticket has exceeded its SLA timeframe and requires immediate attention.
-                {% elseif new_status == 'Resolved' %}
-                Your issue has been resolved! Please check if your problem is fixed.
                 {% else %}
                 The ticket status has been changed to {{new_status}}.
                 {% endif %}
             </p>
         </div>
+        {% endif %}
 
         <div class="note">
             *If you have any questions about this status change, please reply to this email or contact our support team directly.*

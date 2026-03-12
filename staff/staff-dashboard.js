@@ -33,58 +33,7 @@ async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
   }
 }
 
-async function sendTicketCompletionEmail(ticket) {
-  try {
-    const templateParams = {
-      to_email: ticket.reporter_email,
-      to_name: ticket.reporter_name,
-      ticket_id: ticket.ticket_id || ticket.id,
-      subject: ticket.subject,
-      completed_at: new Date().toLocaleString()
-    };
 
-    const result = await emailjs.send(
-      'service_51x358nfemaz', // Replace with your EmailJS service ID
-      'template_ticket_completed', // Replace with your template ID
-      templateParams
-    );
-
-    console.log('Ticket completion email sent:', result);
-    return true;
-  } catch (error) {
-    console.error('Error sending ticket completion email:', error);
-    return false;
-  }
-}
-
-async function sendCCNotificationEmail(ticket, action) {
-  if (!ticket.cc_emails || ticket.cc_emails.length === 0) return;
-
-  for (const ccEmail of ticket.cc_emails) {
-    try {
-      const templateParams = {
-        to_email: ccEmail,
-        to_name: 'CC Recipient',
-        ticket_id: ticket.ticket_id || ticket.id,
-        subject: ticket.subject,
-        action: action,
-        reporter_name: ticket.reporter_name,
-        reporter_email: ticket.reporter_email,
-        updated_at: new Date().toLocaleString()
-      };
-
-      const result = await emailjs.send(
-        'service_51x358nfemaz', // Replace with your EmailJS service ID
-        'template_cc_notification', // Replace with your template ID
-        templateParams
-      );
-
-      console.log(`CC notification email sent to ${ccEmail}:`, result);
-    } catch (error) {
-      console.error(`Error sending CC notification email to ${ccEmail}:`, error);
-    }
-  }
-}
 window.handleLogout = handleLogout;
 
 function switchTab(tabType) {
