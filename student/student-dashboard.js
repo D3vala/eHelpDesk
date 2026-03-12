@@ -205,7 +205,7 @@ async function sendTicketCreationEmail(ticket) {
     };
 
     const result = await emailjs.send(
-      'service_51x358n', // Replace with your EmailJS service ID
+      'service_jizioq5', // Replace with your EmailJS service ID
       'template_orx8boh', // Replace with your template ID
       templateParams
     );
