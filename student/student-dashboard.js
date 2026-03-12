@@ -231,8 +231,8 @@ async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
     };
 
     const result = await emailjs.send(
-      'service_51x358nfemaz', // Replace with your EmailJS service ID
-      'template_status_update', // Replace with your template ID
+      'service_51x358n', // Replace with your EmailJS service ID
+      'template_fjegsup', // Replace with your template ID
       templateParams
     );
 

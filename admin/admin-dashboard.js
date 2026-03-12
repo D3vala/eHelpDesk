@@ -159,8 +159,8 @@ async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
     };
 
     const result = await emailjs.send(
-      'service_51x358nfemaz', // Replace with your EmailJS service ID
-      'template_status_update', // Replace with your template ID
+      'service_51x358n', // Replace with your EmailJS service ID
+      'template_fjegsup', // Replace with your template ID
       templateParams
     );
 
@@ -658,7 +658,7 @@ window.submitMessage = async function() {
       if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
       try {
         await emailjs.send(
-          'service_x81e8u7',
+          'service_51x358n',
           'template_4cqrvwy',
           {
             to_email:   reporterEmail,
@@ -784,8 +784,8 @@ window.saveTicketUpdates = async function() {
       if (reporterEmail) {
         try {
           await emailjs.send(
-            'service_x81e8u7',
-            'template_4cqrvwy',
+            'service_51x358n',
+            'template_fjegsup',
             {
               to_email:   reporterEmail,
               ticket_id:  ticket.ticket_id || ticket.id,
