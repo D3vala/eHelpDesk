@@ -199,6 +199,7 @@ function formatDate(dateString) {
 
 // 7. TICKET DETAIL MODAL
 let currentTicketId = null;
+let currentReporterPhone = null;
 let staffReplyMode  = 'sms';
 let slaIntervalId   = null;
 
@@ -233,6 +234,7 @@ async function viewTicketDetails(id) {
     document.getElementById('sd-modal-reporter-name').textContent    = name;
     document.getElementById('sd-modal-reporter-email').textContent   = ticket.reporter_email || '-';
     document.getElementById('sd-modal-reporter-phone').textContent   = ticket.reporter_phone || '-';
+    currentReporterPhone = ticket.reporter_phone || null;
 
     // Ticket details
     document.getElementById('sd-modal-campus').textContent  = ticket.campus_location || '-';
@@ -413,6 +415,46 @@ async function submitStaffMessage() {
     if (!text || !currentTicketId) return;
 
     const staffName = localStorage.getItem('userFullName') || 'Staff';
+
+    // If SMS mode, send via Semaphore first
+    if (staffReplyMode === 'sms') {
+        if (!currentReporterPhone) {
+            alert('No phone number on file for this reporter. Ask them to add it when submitting a ticket.');
+            return;
+        }
+        const sendBtn = document.querySelector('.sd-send-btn');
+        if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
+        try {
+            const formData = new URLSearchParams();
+            formData.append('apikey',  'f396278c9590de4ad98f7359f4f96a20');
+            formData.append('number',  currentReporterPhone);
+            formData.append('message', text);
+            const res = await fetch('https://api.semaphore.co/api/v4/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString(),
+            });
+            const rawText = await res.text();
+            console.log('SMS response status:', res.status);
+            console.log('SMS response body:', rawText);
+            let result;
+            try { result = JSON.parse(rawText); } catch { result = { error: rawText }; }
+            if (!res.ok) {
+                console.error('SMS failed:', result);
+                alert(`SMS failed (${res.status}): ${JSON.stringify(result)}`);
+                if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send'; }
+                return;
+            }
+        } catch (err) {
+            console.error('SMS network error:', err);
+            alert(`SMS network error: ${err.message || err}`);
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send'; }
+            return;
+        }
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send'; }
+    }
+
+    // Log to activity feed
     const { error } = await window.supabase
         .from('activity_log')
         .insert({
