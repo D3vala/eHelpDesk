@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <!-- Supabase UMD build — works on file:// without a local server -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
       window.supabase = supabase.createClient(
         'https://ultmtnqbzckmyqffevjv.supabase.co',
@@ -179,8 +180,8 @@
             </div>
 
             <div class="reply-tabs">
-              <div class="reply-tab active" id="sd-tab-sms" onclick="switchStaffReplyTab('sms')">
-                <i class="fa-solid fa-mobile-screen-button"></i> SMS Reply to User
+              <div class="reply-tab active" id="sd-tab-email" onclick="switchStaffReplyTab('email')">
+                <i class="fa-solid fa-envelope"></i> Email Reply to User
               </div>
               <div class="reply-tab" id="sd-tab-internal" onclick="switchStaffReplyTab('internal')">
                 <i class="fa-solid fa-lock"></i> Internal Note
@@ -188,12 +189,11 @@
             </div>
 
             <textarea class="reply-textarea" id="sd-reply-textarea"
-              placeholder="Type message to send via SMS..."
+              placeholder="Type message to send via email..."
               oninput="updateStaffCharCount()"></textarea>
 
             <div class="reply-footer">
               <button class="submit-reply-btn" onclick="submitStaffMessage()">Send Message</button>
-              <div class="char-count" id="sd-char-count">160 chars left</div>
             </div>
 
             <div class="activity-thread">
@@ -211,7 +211,6 @@
                 <div class="reporter-details">
                   <strong id="sd-modal-reporter-name">Loading...</strong>
                   <span id="sd-modal-reporter-email">-</span>
-                  <span id="sd-modal-reporter-phone">-</span>
                 </div>
               </div>
             </div>

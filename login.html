@@ -336,6 +336,9 @@
 
         <button class="btn-primary" onclick="handleLogin()">Sign in</button>
 
+        <!-- Inline error/info banner -->
+        <div id="login-error-banner" style="display:none; margin-top:12px; padding:12px 14px; border-radius:8px; font-size:13px; line-height:1.5;"></div>
+
         <div class="bottom-divider"></div>
         <p class="bottom-text">
           Don't have an account?
@@ -593,7 +596,25 @@
               window.location.href = "student/student-dashboard.html";
             }
           } else {
-            alert("Login failed: " + result.error);
+            document.getElementById('loading-overlay').style.display = 'none';
+            const errMsg = result.error || '';
+            const banner = document.getElementById('login-error-banner');
+            if (errMsg.toLowerCase().includes('email not confirmed') ||
+                errMsg.toLowerCase().includes('email_not_confirmed')) {
+              banner.style.background = '#fff7ed';
+              banner.style.border = '1px solid #fed7aa';
+              banner.style.color = '#92400e';
+              banner.innerHTML = `
+                <strong>Email not verified.</strong> Please check your inbox for the confirmation link.<br>
+                <span style="text-decoration:underline;cursor:pointer;font-weight:600;" onclick="resendConfirmation()">Resend confirmation email</span>
+              `;
+            } else {
+              banner.style.background = '#fef2f2';
+              banner.style.border = '1px solid #fecaca';
+              banner.style.color = '#991b1b';
+              banner.textContent = errMsg || 'Login failed. Please check your credentials.';
+            }
+            banner.style.display = 'block';
           }
         } catch (error) {
           console.error("Login error:", error);
@@ -664,6 +685,32 @@
           handleDemoLogin(email, password, 'student');
         } else {
           alert("Please use a Mapúa email.");
+        }
+      }
+
+      // --- RESEND CONFIRMATION EMAIL ---
+      async function resendConfirmation() {
+        const email = document.getElementById('login-email').value.trim().toLowerCase();
+        if (!email) {
+          alert('Please enter your email address above first.');
+          return;
+        }
+        try {
+          const { error } = await window.supabase.auth.resend({
+            type: 'signup',
+            email: email
+          });
+          const banner = document.getElementById('login-error-banner');
+          if (error) {
+            banner.textContent = 'Could not resend email: ' + error.message;
+          } else {
+            banner.style.background = '#f0fdf4';
+            banner.style.border = '1px solid #bbf7d0';
+            banner.style.color = '#14532d';
+            banner.textContent = 'Confirmation email resent! Please check your inbox.';
+          }
+        } catch (e) {
+          alert('Error resending confirmation: ' + e.message);
         }
       }
     </script>

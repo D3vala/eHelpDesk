@@ -332,7 +332,7 @@
       </div>
     </div>
 
-    <script>
+    <script type="module">
       import { supabase } from './supabase-config.js';
 
       // Password validation
@@ -468,16 +468,39 @@
           console.log('Supabase response:', { data, error });
 
           if (error) {
+            // "User already registered" — Supabase explicit duplicate error
+            if (error.message?.toLowerCase().includes('already registered') ||
+                error.message?.toLowerCase().includes('already exists') ||
+                error.status === 422) {
+              showError('This email is already registered. Please check your inbox for a confirmation email, or sign in if you already confirmed your account.');
+              hideLoading();
+              setTimeout(() => { window.location.href = 'login.html'; }, 4000);
+              return;
+            }
             throw error;
+          }
+
+          // Supabase silent duplicate: when email confirmation is enabled,
+          // a duplicate signup returns a fake success with identities: []
+          if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+            showError('This email is already registered but may be awaiting confirmation. Please check your inbox for a verification email, or sign in if you already confirmed your account.');
+            hideLoading();
+            setTimeout(() => { window.location.href = 'login.html'; }, 4000);
+            return;
           }
 
           if (data.user) {
             console.log('User created, creating profile...');
             // Auto-create user profile
             await createUserProfile(email, name);
-            showSuccess('Account created successfully! Please check your email for verification.');
-            
-            // Redirect to login after 3 seconds
+
+            // If session exists, email confirmation is disabled — account is active immediately
+            if (data.session) {
+              showSuccess('Account created successfully! Redirecting to login...');
+            } else {
+              showSuccess('Account created! Please check your email to verify your account before signing in.');
+            }
+
             setTimeout(() => {
               window.location.href = 'login.html';
             }, 3000);
@@ -533,6 +556,9 @@
           return null;
         }
       }
+
+      // Expose to global scope for onclick attributes
+      window.handleSignUp = handleSignUp;
     </script>
   </body>
 </html>

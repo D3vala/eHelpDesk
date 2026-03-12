@@ -199,8 +199,7 @@ function formatDate(dateString) {
 
 // 7. TICKET DETAIL MODAL
 let currentTicketId = null;
-let currentReporterPhone = null;
-let staffReplyMode  = 'sms';
+let staffReplyMode  = 'email';
 let slaIntervalId   = null;
 
 async function viewTicketDetails(id) {
@@ -233,8 +232,6 @@ async function viewTicketDetails(id) {
     document.getElementById('sd-modal-reporter-initials').textContent = initials;
     document.getElementById('sd-modal-reporter-name').textContent    = name;
     document.getElementById('sd-modal-reporter-email').textContent   = ticket.reporter_email || '-';
-    document.getElementById('sd-modal-reporter-phone').textContent   = ticket.reporter_phone || '-';
-    currentReporterPhone = ticket.reporter_phone || null;
 
     // Ticket details
     document.getElementById('sd-modal-campus').textContent  = ticket.campus_location || '-';
@@ -250,7 +247,7 @@ async function viewTicketDetails(id) {
     await loadStaffActivityFeed(id);
 
     // Reset reply box
-    switchStaffReplyTab('sms');
+    switchStaffReplyTab('email');
     document.getElementById('sd-reply-textarea').value = '';
     updateStaffCharCount();
 
@@ -334,7 +331,7 @@ async function loadStaffActivityFeed(ticketId) {
     data.forEach(act => {
         let iconClass = 'fa-gear', badgeClass = 'system', badgeText = 'System';
         if (act.action === 'internal') { iconClass = 'fa-lock';                  badgeClass = 'internal'; badgeText = 'Internal Note'; }
-        else if (act.action === 'sms')  { iconClass = 'fa-mobile-screen-button'; badgeClass = 'sms';      badgeText = 'SMS Reply'; }
+        else if (act.action === 'email') { iconClass = 'fa-envelope';            badgeClass = 'email';    badgeText = 'Email Reply'; }
         else if (act.action === 'alert') { iconClass = 'fa-triangle-exclamation'; badgeClass = 'alert';    badgeText = 'Escalation'; }
 
         const div = document.createElement('div');
@@ -385,15 +382,15 @@ window.closeTicketModal = closeTicketModal;
 
 function switchStaffReplyTab(mode) {
     staffReplyMode = mode;
-    const tabSms  = document.getElementById('sd-tab-sms');
-    const tabInt  = document.getElementById('sd-tab-internal');
+    const tabEmail = document.getElementById('sd-tab-email');
+    const tabInt   = document.getElementById('sd-tab-internal');
     const textarea = document.getElementById('sd-reply-textarea');
-    if (mode === 'sms') {
-        tabSms.classList.add('active');    tabInt.classList.remove('active');
-        textarea.placeholder = 'Type message to send via SMS...';
+    if (mode === 'email') {
+        tabEmail.classList.add('active');  tabInt.classList.remove('active');
+        textarea.placeholder = 'Type message to send via email...';
         textarea.classList.remove('internal-note-mode');
     } else {
-        tabInt.classList.add('active');    tabSms.classList.remove('active');
+        tabInt.classList.add('active');    tabEmail.classList.remove('active');
         textarea.placeholder = 'Type an internal note (visible to staff only)...';
         textarea.classList.add('internal-note-mode');
     }
@@ -403,9 +400,7 @@ window.switchStaffReplyTab = switchStaffReplyTab;
 
 function updateStaffCharCount() {
     const val = document.getElementById('sd-reply-textarea').value;
-    const el  = document.getElementById('sd-char-count');
-    if (!el) return;
-    el.textContent = staffReplyMode === 'sms' ? `${160 - val.length} chars left` : `${val.length} chars typed`;
+    // no char counter needed for email mode
 }
 window.updateStaffCharCount = updateStaffCharCount;
 
@@ -415,43 +410,44 @@ async function submitStaffMessage() {
     if (!text || !currentTicketId) return;
 
     const staffName = localStorage.getItem('userFullName') || 'Staff';
+    const sendBtn   = document.querySelector('.submit-reply-btn');
 
-    // If SMS mode, send via Semaphore first
-    if (staffReplyMode === 'sms') {
-        if (!currentReporterPhone) {
-            alert('No phone number on file for this reporter. Ask them to add it when submitting a ticket.');
+    // If email mode, actually send an email to the reporter
+    if (staffReplyMode === 'email') {
+        // Get reporter email from the currently displayed ticket
+        const { data: ticket } = await window.supabase
+            .from('tickets')
+            .select('reporter_email, ticket_id')
+            .eq('id', currentTicketId)
+            .single();
+
+        if (!ticket?.reporter_email) {
+            alert('No reporter email found for this ticket.');
             return;
         }
-        const sendBtn = document.querySelector('.sd-send-btn');
+
         if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
+
         try {
-            const formData = new URLSearchParams();
-            formData.append('apikey',  'f396278c9590de4ad98f7359f4f96a20');
-            formData.append('number',  currentReporterPhone);
-            formData.append('message', text);
-            const res = await fetch('https://api.semaphore.co/api/v4/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData.toString(),
-            });
-            const rawText = await res.text();
-            console.log('SMS response status:', res.status);
-            console.log('SMS response body:', rawText);
-            let result;
-            try { result = JSON.parse(rawText); } catch { result = { error: rawText }; }
-            if (!res.ok) {
-                console.error('SMS failed:', result);
-                alert(`SMS failed (${res.status}): ${JSON.stringify(result)}`);
-                if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send'; }
-                return;
-            }
+            await emailjs.send(
+                'service_05cka72',
+                'template_4cqrvwy',
+                {
+                    to_email:   ticket.reporter_email,
+                    ticket_id:  ticket.ticket_id || ('#' + currentTicketId),
+                    staff_name: staffName,
+                    message:    text,
+                },
+                { publicKey: 'tuIeGDI1S5x_SUbZI' }
+            );
         } catch (err) {
-            console.error('SMS network error:', err);
-            alert(`SMS network error: ${err.message || err}`);
-            if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send'; }
+            console.error('Email send error:', err);
+            alert('Failed to send email: ' + (err.text || err.message || 'Unknown error'));
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send Message'; }
             return;
         }
-        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send'; }
+
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send Message'; }
     }
 
     // Log to activity feed

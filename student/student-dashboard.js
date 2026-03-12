@@ -374,13 +374,10 @@ async function createTicket(event) {
   const ccsInput  = document.querySelector('input[placeholder="Select CCs"]');
   const subjectEl = document.querySelector('input[placeholder="Enter subject"]');
   const editorEl  = document.getElementById("editor");
-  const phoneEl   = document.getElementById("phoneInput");
-
   const campus      = campusEl?.value  || '';
   const dept        = deptEl?.value    || '';
   const ccsRaw      = ccsInput?.value  || '';
   const subject     = subjectEl?.value || '';
-  const phone       = phoneEl?.value.trim() || '';
   const placeholder = "Enter description. Type / to open a list";
   const description = (editorEl?.innerText || '').trim();
 
@@ -397,7 +394,6 @@ async function createTicket(event) {
     description:     description === placeholder ? '' : description,
     reporter_email:  userEmail,
     reporter_name:   userFullName,
-    reporter_phone:  phone,
     campus_location: campus,
     department:      dept,
     cc_emails:       ccEmails,

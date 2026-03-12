@@ -618,6 +618,36 @@ window.submitMessage = async function() {
     const ticket  = tickets.find(t => t.id === activeTicketId);
     if (!ticket) return;
 
+    // If email mode, actually send an email to the reporter
+    if (activeReplyMode === 'email') {
+      const reporterEmail = ticket.email || ticket.reporter_email;
+      if (!reporterEmail) {
+        alert('No reporter email found for this ticket.');
+        return;
+      }
+      const btn = document.querySelector('.submit-reply-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+      try {
+        await emailjs.send(
+          'service_05cka72',
+          'template_4cqrvwy',
+          {
+            to_email:   reporterEmail,
+            ticket_id:  ticket.id,
+            staff_name: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
+            message:    text,
+          },
+          { publicKey: 'tuIeGDI1S5x_SUbZI' }
+        );
+      } catch (err) {
+        alert('Failed to send email: ' + (err.text || err.message || 'Unknown error'));
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
+        return;
+      }
+      const btn2 = document.querySelector('.submit-reply-btn');
+      if (btn2) { btn2.disabled = false; btn2.textContent = 'Send Message'; }
+    }
+
     const now     = new Date();
     const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 

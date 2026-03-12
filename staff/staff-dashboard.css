@@ -545,7 +545,7 @@ td {
   font-size: 12px; color: #666; flex-shrink: 0; margin-top: 2px;
 }
 .activity-icon.internal { background: #fef08a; color: #975a16; }
-.activity-icon.sms      { background: #e0f2fe; color: #0369a1; }
+.activity-icon.email    { background: #e0f2fe; color: #0369a1; }
 .activity-icon.alert    { background: #fee2e2; color: #dc2626; }
 .activity-content { flex: 1; }
 .activity-content p { font-size: 14px; color: #333; line-height: 1.5; margin-bottom: 4px; white-space: pre-wrap; }
@@ -556,7 +556,7 @@ td {
   border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px;
 }
 .badge.internal { background: #fef08a; color: #975a16; }
-.badge.sms      { background: #e0f2fe; color: #0369a1; }
+.badge.email    { background: #e0f2fe; color: #0369a1; }
 .badge.system   { background: #f0f0f0; color: #666; }
 .badge.alert    { background: #fee2e2; color: #dc2626; }
 .activity-time  { font-size: 12px; color: #888; font-weight: 500; }
