@@ -545,25 +545,30 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
   background: #ffffff;
   border: 1px solid #eaeaea;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
   color: #333;
-  text-decoration: none; 
-  transition: background-color 0.2s, border-color 0.2s;
-  cursor: pointer;
+  text-decoration: none;
+  margin-right: 8px; margin-bottom: 8px;
 }
 
 .attachment-pill i { color: #888; }
 
-.attachment-pill:hover {
-  background: #f8f8f8;
-  border-color: #d0d0d0;
-  color: #111;
+.pill-actions { display: inline-flex; gap: 6px; margin-left: 4px; }
+.pill-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+  cursor: pointer; text-decoration: none; border: none; transition: background 0.15s;
 }
+.pill-view { background: #eff6ff; color: #2563eb; }
+.pill-view:hover { background: #dbeafe; }
+.pill-dl { background: #f0fdf4; color: #16a34a; }
+.pill-dl:hover { background: #dcfce7; }
 
 /* Reply Box */
 .reply-tabs {
@@ -695,7 +700,7 @@ body {
   color: #975a16;
 }
 
-.activity-icon.sms {
+.activity-icon.email {
   background: #e0f2fe;
   color: #0369a1;
 }
@@ -741,7 +746,7 @@ body {
 }
 
 .badge.internal { background: #fef08a; color: #975a16; }
-.badge.sms { background: #e0f2fe; color: #0369a1; }
+.badge.email { background: #e0f2fe; color: #0369a1; }
 .badge.system { background: #f0f0f0; color: #666; }
 .badge.alert { background: #fee2e2; color: #dc2626; }
 

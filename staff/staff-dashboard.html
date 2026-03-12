@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     <!-- Supabase UMD build — works on file:// without a local server -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
       window.supabase = supabase.createClient(
         'https://ultmtnqbzckmyqffevjv.supabase.co',
@@ -187,6 +188,8 @@
 
             <!-- Reply Tabs -->
             <div class="reply-tabs">
+              <div class="reply-tab active" id="sd-tab-email" onclick="switchStaffReplyTab('email')">
+                <i class="fa-solid fa-envelope"></i> Email Reply to User
               <div class="reply-tab active" id="tab-sms" onclick="switchReplyTab('sms')">
                 <i class="fa-solid fa-mobile-screen-button"></i> SMS Reply to User
               </div>
@@ -195,6 +198,12 @@
               </div>
             </div>
 
+            <textarea class="reply-textarea" id="sd-reply-textarea"
+              placeholder="Type message to send via email..."
+              oninput="updateStaffCharCount()"></textarea>
+
+            <div class="reply-footer">
+              <button class="submit-reply-btn" onclick="submitStaffMessage()">Send Message</button>
             <textarea class="reply-textarea" id="reply-textarea"
               placeholder="Type message to send via SMS..." oninput="updateCharCount()"></textarea>
 
@@ -221,6 +230,8 @@
               <div class="reporter-info">
                 <div class="reporter-avatar" id="modal-reporter-initials">--</div>
                 <div class="reporter-details">
+                  <strong id="sd-modal-reporter-name">Loading...</strong>
+                  <span id="sd-modal-reporter-email">-</span>
                   <strong id="modal-reporter-name">—</strong>
                   <span id="modal-reporter-email">—</span>
                   <span id="modal-reporter-phone">—</span>
@@ -263,15 +274,35 @@
               <div class="sla-timer-large" id="modal-sla-timer">—</div>
             </div>
 
+            <div class="sidebar-section">
+              <h4>STATUS</h4>
+              <select id="sd-modal-status-select" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #eaeaea;font-size:13px;color:#111;background:#fff;">
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+          </div>
+
           </div>
         </div>
 
         <!-- FOOTER -->
         <div class="modal-footer">
           <button class="btn-cancel" onclick="closeTicketModal()">Close</button>
+          <button style="background:#111;color:#fff;padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;" onclick="saveStaffChanges()">Save Changes</button>
         </div>
 
       </div>
+    </div>
+
+    <!-- Attachment Preview Modal -->
+    <div id="att-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:999999;align-items:center;justify-content:center;flex-direction:column;">
+      <button onclick="closeAttachmentPreview()" style="position:absolute;top:20px;right:28px;background:none;border:none;color:#fff;font-size:36px;cursor:pointer;line-height:1;">&times;</button>
+      <img id="att-preview-img" src="" alt="" style="max-width:90vw;max-height:78vh;border-radius:8px;object-fit:contain;display:none;">
+      <iframe id="att-preview-iframe" src="" style="width:90vw;height:78vh;border:none;border-radius:8px;background:#fff;display:none;"></iframe>
+      <p id="att-preview-name" style="color:#ccc;margin-top:14px;font-size:13px;"></p>
+      <a id="att-preview-dl" href="" download="" style="margin-top:6px;color:#aaa;font-size:12px;text-decoration:underline;">Download</a>
     </div>
 
     <script src="staff-dashboard.js"></script>

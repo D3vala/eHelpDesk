@@ -2,9 +2,38 @@
 
 // 1. GLOBAL FUNCTIONS (accessible from inline onclick handlers)
 function handleLogout() {
-    localStorage.clear();
-    window.location.href = '../login.html';
+  localStorage.clear();
+  window.location.href = "../login.html";
 }
+
+// EmailJS Functions for Staff
+async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
+  try {
+    const templateParams = {
+      to_email: ticket.reporter_email,
+      to_name: ticket.reporter_name,
+      ticket_id: ticket.ticket_id || ticket.id,
+      subject: ticket.subject,
+      old_status: formatStatus(oldStatus),
+      new_status: formatStatus(newStatus),
+      updated_at: new Date().toLocaleString()
+    };
+
+    const result = await emailjs.send(
+      'service_51x358nfemaz', // Replace with your EmailJS service ID
+      'template_status_update', // Replace with your template ID
+      templateParams
+    );
+
+    console.log('Status update email sent:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending status update email:', error);
+    return false;
+  }
+}
+
+
 window.handleLogout = handleLogout;
 
 function switchTab(tabType) {
@@ -198,6 +227,40 @@ function formatDate(dateString) {
 }
 
 // 7. TICKET DETAIL MODAL
+let currentTicketId = null;
+let staffReplyMode  = 'email';
+let slaIntervalId   = null;
+
+async function viewTicketDetails(id) {
+    currentTicketId = id;
+
+    const { data: ticket, error } = await window.supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error || !ticket) { console.error('Error loading ticket:', error); return; }
+
+    // Header
+    document.getElementById('sd-modal-ticket-id').textContent = ticket.ticket_id || ('#' + ticket.id);
+    document.getElementById('sd-modal-ticket-subject').textContent = 'Subject: ' + (ticket.subject || '');
+    const badge = document.getElementById('sd-modal-status-badge');
+    badge.className = 'status-pill ' + getStatusClass(ticket.status);
+    badge.textContent = formatStatus(ticket.status);
+
+    // Description
+    document.getElementById('sd-modal-description').textContent = ticket.description || 'No description provided.';
+
+    // Attachments
+    await loadStaffAttachments(id);
+
+    // Reporter
+    const name = ticket.reporter_name || ticket.reporter_email || 'Unknown';
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    document.getElementById('sd-modal-reporter-initials').textContent = initials;
+    document.getElementById('sd-modal-reporter-name').textContent    = name;
+    document.getElementById('sd-modal-reporter-email').textContent   = ticket.reporter_email || '-';
 let _slaInterval   = null;
 let _replyMode     = 'sms';
 let _openTicketId  = null;
@@ -306,6 +369,14 @@ async function viewTicketDetails(ticketId) {
     // --- Activity log (from Supabase) ---
     await loadActivityFeed(ticket.id);
 
+    // Status select
+    const statusSelect = document.getElementById('sd-modal-status-select');
+    if (statusSelect) statusSelect.value = ticket.status || 'open';
+
+    // Reset reply box
+    switchStaffReplyTab('email');
+    document.getElementById('sd-reply-textarea').value = '';
+    updateStaffCharCount();
     // --- Reset reply box ---
     switchReplyTab('sms');
     const ta = document.getElementById('reply-textarea');
@@ -318,6 +389,117 @@ async function viewTicketDetails(ticketId) {
 }
 window.viewTicketDetails = viewTicketDetails;
 
+async function loadStaffAttachments(ticketId) {
+    const container = document.getElementById('sd-modal-attachments');
+    container.innerHTML = '<h4>ATTACHMENTS</h4>';
+
+    const { data, error } = await window.supabase
+        .from('attachments')
+        .select('*')
+        .eq('ticket_id', ticketId);
+
+    if (error || !data || data.length === 0) {
+        container.innerHTML += '<p style="font-size:13px;color:#888;">No attachments.</p>';
+        return;
+    }
+    data.forEach(att => {
+        const hasUrl = att.file_url && att.file_url !== 'pending';
+        const isDataUrl = hasUrl && att.file_url.startsWith('data:');
+        const isImage = att.file_type && att.file_type.startsWith('image/');
+        const isPdf = att.file_type === 'application/pdf';
+        const canPreview = hasUrl && (isImage || isPdf);
+
+        const pill = document.createElement('div');
+        pill.className  = 'attachment-pill';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.innerHTML = `<i class="fa-solid ${getStaffFileIcon(att.file_type)}"></i> ${att.file_name} <span style="color:#aaa;">(${formatStaffFileSize(att.file_size)})</span>`;
+
+        const actions = document.createElement('span');
+        actions.className = 'pill-actions';
+
+        if (canPreview) {
+            const viewBtn = document.createElement('button');
+            viewBtn.className = 'pill-btn pill-view';
+            viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i> View';
+            viewBtn.addEventListener('click', () => openAttachmentPreview(att.file_url, att.file_name, att.file_type));
+            actions.appendChild(viewBtn);
+        }
+
+        if (hasUrl) {
+            const dlBtn = document.createElement('a');
+            dlBtn.className = 'pill-btn pill-dl';
+            dlBtn.href = att.file_url;
+            dlBtn.download = att.file_name;
+            if (!isDataUrl) { dlBtn.target = '_blank'; dlBtn.rel = 'noopener noreferrer'; }
+            dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+            actions.appendChild(dlBtn);
+        } else {
+            const noLink = document.createElement('span');
+            noLink.style.cssText = 'color:#f97316;font-size:10px;';
+            noLink.textContent = 'no download link';
+            actions.appendChild(noLink);
+        }
+
+        pill.appendChild(nameSpan);
+        pill.appendChild(actions);
+        container.appendChild(pill);
+    });
+}
+
+async function loadStaffActivityFeed(ticketId) {
+    const feed = document.getElementById('sd-activity-feed');
+    feed.innerHTML = '';
+
+    const { data, error } = await window.supabase
+        .from('activity_log')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+        feed.innerHTML = '<p style="font-size:13px;color:#888;">No activity yet.</p>';
+        return;
+    }
+    data.forEach(act => {
+        let iconClass = 'fa-gear', badgeClass = 'system', badgeText = 'System';
+        if (act.action === 'internal') { iconClass = 'fa-lock';                  badgeClass = 'internal'; badgeText = 'Internal Note'; }
+        else if (act.action === 'email') { iconClass = 'fa-envelope';            badgeClass = 'email';    badgeText = 'Email Reply'; }
+        else if (act.action === 'alert') { iconClass = 'fa-triangle-exclamation'; badgeClass = 'alert';    badgeText = 'Escalation'; }
+
+        const div = document.createElement('div');
+        div.className = 'activity-item';
+        div.innerHTML = `
+            <div class="activity-icon ${badgeClass}"><i class="fa-solid ${iconClass}"></i></div>
+            <div class="activity-content">
+                <div class="activity-meta">
+                    <strong>${act.description ? act.description.split(':')[0] : 'System'}</strong>
+                    <span class="badge ${badgeClass}">${badgeText}</span>
+                </div>
+                <p>${act.description || ''}</p>
+                <span class="activity-time">${new Date(act.created_at).toLocaleString()}</span>
+            </div>`;
+        feed.appendChild(div);
+    });
+}
+
+function startSlaTimer(ticket) {
+    if (slaIntervalId) clearInterval(slaIntervalId);
+    const timerEl = document.getElementById('sd-modal-sla-timer');
+    if (!timerEl) return;
+    function tick() {
+        if (!ticket.created_at) { timerEl.textContent = '--:--:--'; return; }
+        const deadline  = new Date(ticket.created_at).getTime() + 24 * 3600 * 1000;
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+            timerEl.textContent = 'BREACHED';
+            timerEl.style.color = '#ef4444';
+        } else {
+            const h = Math.floor(remaining / 3600000);
+            const m = Math.floor((remaining % 3600000) / 60000);
+            const s = Math.floor((remaining % 60000) / 1000);
+            timerEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            timerEl.style.color = remaining < 3600000 ? '#f97316' : '#111';
 async function loadActivityFeed(ticketId) {
     const feed = document.getElementById('activity-feed');
     if (!feed) return;
@@ -362,6 +544,85 @@ async function loadActivityFeed(ticketId) {
     }
 }
 
+async function saveStaffChanges() {
+    if (!currentTicketId) return;
+    const statusSelect = document.getElementById('sd-modal-status-select');
+    const newStatus = statusSelect?.value;
+    if (!newStatus) return;
+
+    const staffName = localStorage.getItem('userFullName') || 'Staff';
+    const btn = document.querySelector('.modal-footer button:last-child');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+    const { data: ticket } = await window.supabase
+        .from('tickets')
+        .select('status, reporter_email, ticket_id')
+        .eq('id', currentTicketId)
+        .single();
+
+    const statusChanged = ticket && ticket.status !== newStatus;
+
+    const { error } = await window.supabase
+        .from('tickets')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', currentTicketId);
+
+    if (error) {
+        alert('Failed to save changes.');
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+        return;
+    }
+
+    await window.supabase.from('activity_log').insert({
+        ticket_id:   currentTicketId,
+        action:      'status_changed',
+        description: `${staffName} updated status to ${newStatus}`,
+        metadata:    { old_status: ticket?.status, new_status: newStatus }
+    });
+
+    if (statusChanged && ticket?.reporter_email) {
+        try {
+            await emailjs.send(
+                'service_x81e8u7',
+                'template_4cqrvwy',
+                {
+                    to_email:   ticket.reporter_email,
+                    ticket_id:  ticket.ticket_id || ('#' + currentTicketId),
+                    staff_name: staffName,
+                    message:    `Your ticket status has been updated to: ${formatStatus(newStatus)}`,
+                },
+                { publicKey: 'tuIeGDI1S5x_SUbZI' }
+            );
+        } catch (err) {
+            console.error('Status notification email failed:', err);
+        }
+    }
+
+    const badge = document.getElementById('sd-modal-status-badge');
+    if (badge) {
+        badge.className = 'status-pill ' + getStatusClass(newStatus);
+        badge.textContent = formatStatus(newStatus);
+    }
+    await loadStaffActivityFeed(currentTicketId);
+    await loadTickets();
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+    alert('Changes saved!');
+}
+window.saveStaffChanges = saveStaffChanges;
+
+function switchStaffReplyTab(mode) {
+    staffReplyMode = mode;
+    const tabEmail = document.getElementById('sd-tab-email');
+    const tabInt   = document.getElementById('sd-tab-internal');
+    const textarea = document.getElementById('sd-reply-textarea');
+    if (mode === 'email') {
+        tabEmail.classList.add('active');  tabInt.classList.remove('active');
+        textarea.placeholder = 'Type message to send via email...';
+        textarea.classList.remove('internal-note-mode');
+    } else {
+        tabInt.classList.add('active');    tabEmail.classList.remove('active');
+        textarea.placeholder = 'Type an internal note (visible to staff only)...';
+        textarea.classList.add('internal-note-mode');
 function switchReplyTab(mode) {
     _replyMode = mode;
     const tabSms = document.getElementById('tab-sms');
@@ -378,6 +639,9 @@ function switchReplyTab(mode) {
 }
 window.switchReplyTab = switchReplyTab;
 
+function updateStaffCharCount() {
+    const val = document.getElementById('sd-reply-textarea').value;
+    // no char counter needed for email mode
 function updateCharCount() {
     const val = document.getElementById('reply-textarea')?.value || '';
     const el  = document.getElementById('char-count');
@@ -386,6 +650,60 @@ function updateCharCount() {
 window.updateCharCount = updateCharCount;
 
 async function submitStaffMessage() {
+    const textarea  = document.getElementById('sd-reply-textarea');
+    const text      = textarea.value.trim();
+    if (!text || !currentTicketId) return;
+
+    const staffName = localStorage.getItem('userFullName') || 'Staff';
+    const sendBtn   = document.querySelector('.submit-reply-btn');
+
+    // If email mode, actually send an email to the reporter
+    if (staffReplyMode === 'email') {
+        // Get reporter email from the currently displayed ticket
+        const { data: ticket } = await window.supabase
+            .from('tickets')
+            .select('reporter_email, ticket_id, subject, status')
+            .eq('id', currentTicketId)
+            .single();
+
+        if (!ticket?.reporter_email) {
+            alert('No reporter email found for this ticket.');
+            return;
+        }
+
+        if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
+
+        try {
+            await emailjs.send(
+                'service_x81e8u7',
+                'template_4cqrvwy',
+                {
+                    to_email:   ticket.reporter_email,
+                    ticket_id:  ticket.ticket_id || ('#' + currentTicketId),
+                    staff_name: staffName,
+                    message:    text,
+                },
+                { publicKey: 'tuIeGDI1S5x_SUbZI' }
+            );
+        } catch (err) {
+            console.error('Email send error:', err);
+            alert('Failed to send email: ' + (err.text || err.message || 'Unknown error'));
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send Message'; }
+            return;
+        }
+
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send Message'; }
+    }
+
+    // Log to activity feed
+    const { error } = await window.supabase
+        .from('activity_log')
+        .insert({
+            ticket_id:   currentTicketId,
+            action:      staffReplyMode,
+            description: `${staffName}: ${text}`,
+            metadata:    { mode: staffReplyMode, author: staffName }
+        });
     if (!_openTicketId) return;
     const ta      = document.getElementById('reply-textarea');
     const message = ta?.value.trim();
@@ -435,4 +753,25 @@ function formatFileSize(bytes) {
     if (bytes < 1024)       return bytes + ' B';
     if (bytes < 1048576)    return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function openAttachmentPreview(url, name, type) {
+    const modal = document.getElementById('att-preview-modal');
+    const img = document.getElementById('att-preview-img');
+    const iframe = document.getElementById('att-preview-iframe');
+    document.getElementById('att-preview-name').textContent = name;
+    const dl = document.getElementById('att-preview-dl');
+    dl.href = url; dl.download = name;
+    img.style.display = 'none'; img.src = '';
+    iframe.style.display = 'none'; iframe.src = '';
+    if (type && type.startsWith('image/')) { img.src = url; img.style.display = 'block'; }
+    else if (type === 'application/pdf') { iframe.src = url; iframe.style.display = 'block'; }
+    modal.style.display = 'flex';
+}
+
+function closeAttachmentPreview() {
+    const modal = document.getElementById('att-preview-modal');
+    modal.style.display = 'none';
+    document.getElementById('att-preview-img').src = '';
+    document.getElementById('att-preview-iframe').src = '';
 }

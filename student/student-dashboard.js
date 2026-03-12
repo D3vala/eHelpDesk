@@ -44,12 +44,6 @@ function initAuth() {
 }
 
 function initEventListeners() {
-  // Search functionality
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', handleSearch);
-  }
-
   // Status filter
   const statusDropdown = document.querySelector('.status-dropdown');
   if (statusDropdown) {
@@ -195,6 +189,64 @@ function handleLogout() {
   window.location.href = "../login.html";
 }
 
+// EmailJS Functions
+async function sendTicketCreationEmail(ticket) {
+  try {
+    const templateParams = {
+      to_email: ticket.reporter_email,
+      to_name: ticket.reporter_name,
+      ticket_id: ticket.ticket_id || ticket.id,
+      subject: ticket.subject,
+      description: ticket.description,
+      campus: ticket.campus_location,
+      department: ticket.department,
+      status: formatStatus(ticket.status),
+      created_at: formatDate(ticket.created_at)
+    };
+
+    const result = await emailjs.send(
+      'service_51x358n', // Replace with your EmailJS service ID
+      'template_orx8boh', // Replace with your template ID
+      templateParams
+    );
+
+    console.log('Ticket creation email sent:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending ticket creation email:', error);
+    console.error('Template params:', templateParams);
+    return false;
+  }
+}
+
+async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
+  try {
+    const templateParams = {
+      to_email: ticket.reporter_email,
+      to_name: ticket.reporter_name,
+      ticket_id: ticket.ticket_id || ticket.id,
+      subject: ticket.subject,
+      old_status: formatStatus(oldStatus),
+      new_status: formatStatus(newStatus),
+      updated_at: new Date().toLocaleString()
+    };
+
+    const result = await emailjs.send(
+      'service_51x358nfemaz', // Replace with your EmailJS service ID
+      'template_status_update', // Replace with your template ID
+      templateParams
+    );
+
+    console.log('Status update email sent:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending status update email:', error);
+    return false;
+  }
+}
+
+
+
 // Tickets API Functions
 async function getTickets() {
   try {
@@ -335,13 +387,6 @@ function filterTicketsByUser(tickets) {
   );
 }
 
-// Handle search functionality
-function handleSearch() {
-  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-  // Implementation would filter tickets based on search term
-  loadTickets();
-}
-
 // Handle status filter
 function handleStatusFilter() {
   const statusFilter = document.querySelector('.status-dropdown').value;
@@ -381,6 +426,23 @@ function formatDate(dateString) {
 // CRUD Operations
 async function createTicket(event) {
   event.preventDefault();
+
+  const campusEl  = document.getElementById("campusSelect");
+  const deptEl    = document.getElementById("deptSelect");
+  const ccsInput  = document.querySelector('input[placeholder="Select CCs"]');
+  const subjectEl = document.querySelector('input[placeholder="Enter subject"]');
+  const editorEl  = document.getElementById("editor");
+  const campus      = campusEl?.value  || '';
+  const dept        = deptEl?.value    || '';
+  const ccsRaw      = ccsInput?.value  || '';
+  const subject     = subjectEl?.value || '';
+  const placeholder = "Enter description. Type / to open a list";
+  const description = (editorEl?.innerText || '').trim();
+
+  if (!campus)  { alert('Please select a campus.'); return; }
+  if (!dept)    { alert('Please select a department.'); return; }
+  if (!subject) { alert('Please enter a subject.'); return; }
+
   const campus = document.querySelector("select:first-of-type")?.value || "Not Specified";
   const dept = document.querySelectorAll("select")[1]?.value || "Not Specified";
   const ccs = document.querySelector('input[placeholder="Select CCs"]')?.value || "none";
@@ -410,6 +472,13 @@ async function createTicket(event) {
       return;
     }
 
+    // Send email notifications
+    await Promise.all([
+      sendTicketCreationEmail(saved),
+      sendCCNotificationEmail(saved, 'Ticket Created')
+    ]);
+
+    // Upload any attached files
     // Upload any attached files to Supabase Storage and record in attachments table
     if (uploadedFiles.length > 0) {
       await uploadTicketAttachments(saved.id, uploadedFiles);
@@ -437,6 +506,30 @@ async function uploadTicketAttachments(ticketId, files) {
       const safeName  = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const storagePath = `${ticketId}/${Date.now()}_${safeName}`;
 
+      // Step 1 — try Supabase Storage; fall back to base64 data URL
+      let fileUrl = '';
+      const { error: uploadError } = await window.supabase.storage
+        .from('ticket-attachments')
+        .upload(storagePath, file, { upsert: false });
+
+      if (uploadError) {
+        console.warn('Storage upload failed for', file.name, '— using base64 fallback.', uploadError.message);
+        // Fallback: read file as base64 data URL so it can be viewed/downloaded without storage
+        fileUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      } else {
+        const { data: urlData } = window.supabase.storage
+          .from('ticket-attachments')
+          .getPublicUrl(storagePath);
+        fileUrl = urlData?.publicUrl || '';
+      }
+
+      // Step 2 — insert the DB record
+      const { error: dbError } = await window.supabase
       const { data: uploadData, error: uploadErr } = await window.supabase
         .storage
         .from('ticket-attachments')
@@ -487,6 +580,10 @@ async function viewTicket(ticketId) {
     document.getElementById("viewTimeStamp").innerText = formatDate(ticket.created_at);
 
     await loadStudentAttachments(ticketId);
+    await loadStudentActivityFeed(ticketId);
+
+    const statusTag = document.getElementById('viewStatusTag');
+    if (statusTag) statusTag.textContent = `Status: ${formatStatus(ticket.status)}`;
 
     const overlay = document.getElementById("viewTicketOverlay");
     if (overlay) overlay.style.display = "flex";
@@ -511,20 +608,71 @@ async function loadStudentAttachments(ticketId) {
   list.innerHTML = '';
   data.forEach(att => {
     const hasUrl = att.file_url && att.file_url !== 'pending';
-    const pill = document.createElement(hasUrl ? 'a' : 'span');
-    pill.className = 'attachment-pill';
-    if (hasUrl) {
-      pill.href = att.file_url;
-      pill.target = '_blank';
-      pill.rel = 'noopener noreferrer';
-      pill.download = att.file_name;
-    }
+    const isDataUrl = hasUrl && att.file_url.startsWith('data:');
+    const isImage = att.file_type && att.file_type.startsWith('image/');
+    const isPdf = att.file_type === 'application/pdf';
+    const canPreview = hasUrl && (isImage || isPdf);
     const icon = getStudentFileIcon(att.file_type);
     const size = formatStudentFileSize(att.file_size);
-    pill.innerHTML = `<i class="fa-solid ${icon}"></i> ${att.file_name}${size ? ` <span style="color:#aaa;">(${size})</span>` : ''}${!hasUrl ? ' <span style="color:#f97316;font-size:10px;">no link</span>' : ''}`;
+
+    const pill = document.createElement('div');
+    pill.className = 'attachment-pill';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.innerHTML = `<i class="fa-solid ${icon}"></i> ${att.file_name}${size ? ` <span style="color:#aaa;">(${size})</span>` : ''}`;
+
+    const actions = document.createElement('span');
+    actions.className = 'pill-actions';
+
+    if (canPreview) {
+      const viewBtn = document.createElement('button');
+      viewBtn.className = 'pill-btn pill-view';
+      viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i> View';
+      viewBtn.addEventListener('click', () => openAttachmentPreview(att.file_url, att.file_name, att.file_type));
+      actions.appendChild(viewBtn);
+    }
+
+    if (hasUrl) {
+      const dlBtn = document.createElement('a');
+      dlBtn.className = 'pill-btn pill-dl';
+      dlBtn.href = att.file_url;
+      dlBtn.download = att.file_name;
+      if (!isDataUrl) { dlBtn.target = '_blank'; dlBtn.rel = 'noopener noreferrer'; }
+      dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+      actions.appendChild(dlBtn);
+    } else {
+      const noLink = document.createElement('span');
+      noLink.style.cssText = 'color:#f97316;font-size:10px;';
+      noLink.textContent = 'no link';
+      actions.appendChild(noLink);
+    }
+
+    pill.appendChild(nameSpan);
+    pill.appendChild(actions);
     list.appendChild(pill);
   });
   container.style.display = '';
+}
+
+function openAttachmentPreview(url, name, type) {
+  const modal = document.getElementById('att-preview-modal');
+  const img = document.getElementById('att-preview-img');
+  const iframe = document.getElementById('att-preview-iframe');
+  document.getElementById('att-preview-name').textContent = name;
+  const dl = document.getElementById('att-preview-dl');
+  dl.href = url; dl.download = name;
+  img.style.display = 'none'; img.src = '';
+  iframe.style.display = 'none'; iframe.src = '';
+  if (type && type.startsWith('image/')) { img.src = url; img.style.display = 'block'; }
+  else if (type === 'application/pdf') { iframe.src = url; iframe.style.display = 'block'; }
+  modal.style.display = 'flex';
+}
+
+function closeAttachmentPreview() {
+  const modal = document.getElementById('att-preview-modal');
+  modal.style.display = 'none';
+  document.getElementById('att-preview-img').src = '';
+  document.getElementById('att-preview-iframe').src = '';
 }
 
 function getStudentFileIcon(fileType) {
@@ -655,4 +803,32 @@ function generateTicketID() {
 function closeViewTicket() {
   const overlay = document.getElementById("viewTicketOverlay");
   if (overlay) overlay.style.display = "none";
+}
+
+async function loadStudentActivityFeed(ticketId) {
+  const feed = document.getElementById('student-activity-feed');
+  if (!feed) return;
+  feed.innerHTML = '';
+
+  const { data, error } = await window.supabase
+    .from('activity_log')
+    .select('*')
+    .eq('ticket_id', ticketId)
+    .eq('action', 'email')
+    .order('created_at', { ascending: true });
+
+  if (error || !data || data.length === 0) return;
+
+  data.forEach(act => {
+    const colonIdx = act.description ? act.description.indexOf(': ') : -1;
+    const author  = colonIdx >= 0 ? act.description.slice(0, colonIdx) : 'Staff';
+    const message = colonIdx >= 0 ? act.description.slice(colonIdx + 2) : (act.description || '');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `
+      <span class="log-user" style="color:#1976d2;"><i class="fa-solid fa-envelope" style="margin-right:4px;"></i>${author}</span>
+      <span class="log-text">${message} <em style="color:#aaa;font-size:11px;">— ${new Date(act.created_at).toLocaleString()}</em></span>
+    `;
+    feed.appendChild(entry);
+  });
 }

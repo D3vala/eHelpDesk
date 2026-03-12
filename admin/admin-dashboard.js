@@ -13,8 +13,8 @@ const USERS_TABLE = "users";
 
 // Tracks which ticket is currently open in the modal
 let activeTicketId = null;
-// Tracks which reply mode is active: 'sms' | 'internal'
-let activeReplyMode = "sms";
+// Tracks which reply mode is active: 'email' | 'internal'
+let activeReplyMode = "email";
 // Tracks edit mode for the staff modal
 let editingStaffId = null;
 // Navigation state
@@ -181,6 +181,35 @@ function getInitials(name) {
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : name.slice(0, 2).toUpperCase();
 }
+
+// EmailJS Functions for Admin
+async function sendStatusUpdateEmail(ticket, oldStatus, newStatus) {
+  try {
+    const templateParams = {
+      to_email: ticket.email || ticket.reporter_email,
+      to_name: ticket.reporter_name || ticket.email || 'User',
+      ticket_id: ticket.id,
+      subject: ticket.subject,
+      old_status: oldStatus,
+      new_status: newStatus,
+      updated_at: new Date().toLocaleString()
+    };
+
+    const result = await emailjs.send(
+      'service_51x358nfemaz', // Replace with your EmailJS service ID
+      'template_status_update', // Replace with your template ID
+      templateParams
+    );
+
+    console.log('Status update email sent:', result);
+    return true;
+  } catch (error) {
+    console.error('Error sending status update email:', error);
+    return false;
+  }
+}
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NAVIGATION
@@ -470,7 +499,7 @@ window.openTicketModal = async function(ticketId) {
     if (!ticket) return;
 
     activeTicketId  = ticketId;
-    activeReplyMode = "sms";
+    activeReplyMode = "email";
 
     // Header
     document.getElementById("modal-ticket-id").textContent      = ticket.id;
@@ -494,18 +523,16 @@ window.openTicketModal = async function(ticketId) {
       attContainer.style.display = '';
       attData.forEach(att => {
         const hasUrl = att.file_url && att.file_url !== 'pending';
-        const pill = document.createElement(hasUrl ? 'a' : 'div');
+        const isDataUrl = hasUrl && att.file_url.startsWith('data:');
+        const isImage = att.file_type && att.file_type.startsWith('image/');
+        const isPdf = att.file_type === 'application/pdf';
+        const canPreview = hasUrl && (isImage || isPdf);
+        const pill = document.createElement('div');
         pill.className = 'attachment-pill';
-        if (hasUrl) {
-          pill.href = att.file_url;
-          pill.target = '_blank';
-          pill.rel = 'noopener noreferrer';
-          pill.download = att.file_name;
-        }
         const iconClass = !att.file_type ? 'fa-file'
-          : att.file_type.startsWith('image/')        ? 'fa-file-image'
-          : att.file_type === 'application/pdf'        ? 'fa-file-pdf'
-          : att.file_type.includes('word')             ? 'fa-file-word'
+          : isImage                                                                              ? 'fa-file-image'
+          : isPdf                                                                                ? 'fa-file-pdf'
+          : att.file_type.includes('word')                                                      ? 'fa-file-word'
           : (att.file_type.includes('sheet') || att.file_type.includes('excel') || att.file_type.includes('csv')) ? 'fa-file-excel'
           : 'fa-file';
         const sizeLabel = att.file_size
@@ -513,7 +540,33 @@ window.openTicketModal = async function(ticketId) {
             : att.file_size < 1048576 ? `${(att.file_size / 1024).toFixed(1)} KB`
             : `${(att.file_size / 1048576).toFixed(1)} MB`)
           : '';
-        pill.innerHTML = `<i class="fa-solid ${iconClass}"></i> ${att.file_name}${sizeLabel ? ` <span style="color:#aaa;">(${sizeLabel})</span>` : ''}${!hasUrl ? ' <span style="color:#f97316;font-size:10px;">no download link</span>' : ''}`;
+        const nameSpan = document.createElement('span');
+        nameSpan.innerHTML = `<i class="fa-solid ${iconClass}"></i> ${att.file_name}${sizeLabel ? ` <span style="color:#aaa;">(${sizeLabel})</span>` : ''}`;
+        const actions = document.createElement('span');
+        actions.className = 'pill-actions';
+        if (canPreview) {
+          const viewBtn = document.createElement('button');
+          viewBtn.className = 'pill-btn pill-view';
+          viewBtn.innerHTML = '<i class="fa-solid fa-eye"></i> View';
+          viewBtn.addEventListener('click', () => openAttachmentPreview(att.file_url, att.file_name, att.file_type));
+          actions.appendChild(viewBtn);
+        }
+        if (hasUrl) {
+          const dlBtn = document.createElement('a');
+          dlBtn.className = 'pill-btn pill-dl';
+          dlBtn.href = att.file_url;
+          dlBtn.download = att.file_name;
+          if (!isDataUrl) { dlBtn.target = '_blank'; dlBtn.rel = 'noopener noreferrer'; }
+          dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> Download';
+          actions.appendChild(dlBtn);
+        } else {
+          const noLink = document.createElement('span');
+          noLink.style.cssText = 'color:#f97316;font-size:10px;';
+          noLink.textContent = 'no download link';
+          actions.appendChild(noLink);
+        }
+        pill.appendChild(nameSpan);
+        pill.appendChild(actions);
         attContainer.appendChild(pill);
       });
     }
@@ -524,7 +577,6 @@ window.openTicketModal = async function(ticketId) {
     document.getElementById("modal-reporter-initials").textContent = getInitials(reporterName);
     document.getElementById("modal-reporter-name").textContent     = reporterName;
     document.getElementById("modal-reporter-email").textContent    = ticket.email || "—";
-    document.getElementById("modal-reporter-phone").textContent    = reporter.phone || "—";
 
     // Ticket details
     const details = ticket.details || {};
@@ -551,7 +603,7 @@ window.openTicketModal = async function(ticketId) {
     }
 
     // Reply tab state reset
-    switchReplyTab("sms");
+    switchReplyTab("email");
 
     // Render activity feed
     renderActivityFeed(ticket);
@@ -569,20 +621,43 @@ window.closeModal = function() {
   activeTicketId = null;
 };
 
+function openAttachmentPreview(url, name, type) {
+  const modal = document.getElementById('att-preview-modal');
+  const img = document.getElementById('att-preview-img');
+  const iframe = document.getElementById('att-preview-iframe');
+  document.getElementById('att-preview-name').textContent = name;
+  const dl = document.getElementById('att-preview-dl');
+  dl.href = url; dl.download = name;
+  img.style.display = 'none'; img.src = '';
+  iframe.style.display = 'none'; iframe.src = '';
+  if (type && type.startsWith('image/')) { img.src = url; img.style.display = 'block'; }
+  else if (type === 'application/pdf') { iframe.src = url; iframe.style.display = 'block'; }
+  modal.style.display = 'flex';
+}
+window.openAttachmentPreview = openAttachmentPreview;
+
+function closeAttachmentPreview() {
+  const modal = document.getElementById('att-preview-modal');
+  modal.style.display = 'none';
+  document.getElementById('att-preview-img').src = '';
+  document.getElementById('att-preview-iframe').src = '';
+}
+window.closeAttachmentPreview = closeAttachmentPreview;
+
 window.switchReplyTab = function(mode) {
   activeReplyMode = mode;
 
-  document.getElementById("tab-sms").classList.toggle("active",      mode === "sms");
+  document.getElementById("tab-email").classList.toggle("active",    mode === "email");
   document.getElementById("tab-internal").classList.toggle("active", mode === "internal");
 
   const textarea = document.getElementById("reply-textarea");
   const btn      = document.querySelector(".submit-reply-btn");
   const counter  = document.getElementById("char-count");
 
-  if (mode === "sms") {
-    textarea.placeholder = "Type message to send via SMS...";
+  if (mode === "email") {
+    textarea.placeholder = "Type message to send via email...";
     if (btn)     btn.textContent = "Send Message";
-    if (counter) counter.style.display = "";
+    if (counter) counter.style.display = "none";
   } else {
     textarea.placeholder = "Write an internal note (not visible to the student)...";
     if (btn)     btn.textContent = "Add Note";
@@ -594,13 +669,7 @@ window.switchReplyTab = function(mode) {
 };
 
 window.updateCharCount = function() {
-  if (activeReplyMode !== "sms") return;
-  const textarea = document.getElementById("reply-textarea");
-  const counter  = document.getElementById("char-count");
-  if (!textarea || !counter) return;
-  const remaining = 160 - textarea.value.length;
-  counter.textContent = `${remaining} char${remaining !== 1 ? "s" : ""} left`;
-  counter.style.color = remaining < 20 ? "#e53935" : "";
+  // char count only used for email mode - no hard limit for email
 };
 
 window.submitMessage = async function() {
@@ -614,6 +683,36 @@ window.submitMessage = async function() {
     const tickets = await getTickets();
     const ticket  = tickets.find(t => t.id === activeTicketId);
     if (!ticket) return;
+
+    // If email mode, actually send an email to the reporter
+    if (activeReplyMode === 'email') {
+      const reporterEmail = ticket.email || ticket.reporter_email;
+      if (!reporterEmail) {
+        alert('No reporter email found for this ticket.');
+        return;
+      }
+      const btn = document.querySelector('.submit-reply-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+      try {
+        await emailjs.send(
+          'service_x81e8u7',
+          'template_4cqrvwy',
+          {
+            to_email:   reporterEmail,
+            ticket_id:  ticket.id,
+            staff_name: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
+            message:    text,
+          },
+          { publicKey: 'tuIeGDI1S5x_SUbZI' }
+        );
+      } catch (err) {
+        alert('Failed to send email: ' + (err.text || err.message || 'Unknown error'));
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Message'; }
+        return;
+      }
+      const btn2 = document.querySelector('.submit-reply-btn');
+      if (btn2) { btn2.disabled = false; btn2.textContent = 'Send Message'; }
+    }
 
     const now     = new Date();
     const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -652,6 +751,7 @@ window.escalateTicket = async function() {
     const confirmed = confirm(`Escalate ticket ${activeTicketId}? This will mark it as Breached and flag it for urgent review.`);
     if (!confirmed) return;
 
+    const oldStatus = ticket.status;
     ticket.status = "Breached";
 
     const now     = new Date();
@@ -665,6 +765,9 @@ window.escalateTicket = async function() {
     });
 
     await saveTicket(ticket);
+
+    // Send escalation email notification
+    await sendStatusUpdateEmail(ticket, oldStatus, "Breached");
 
     // Update modal badge
     const badge = document.getElementById("modal-ticket-status-badge");
@@ -712,6 +815,28 @@ window.saveTicketUpdates = async function() {
     }
 
     await saveTicket(ticket);
+
+    if (changes.some(c => c.startsWith('Status'))) {
+      const reporterEmail = ticket.reporter_email || ticket.email;
+      if (reporterEmail) {
+        try {
+          await emailjs.send(
+            'service_x81e8u7',
+            'template_4cqrvwy',
+            {
+              to_email:   reporterEmail,
+              ticket_id:  ticket.ticket_id || ticket.id,
+              staff_name: `${loggedInAdmin.firstName} ${loggedInAdmin.lastName}`,
+              message:    `Your ticket status has been updated to: ${ticket.status}`,
+            },
+            { publicKey: 'tuIeGDI1S5x_SUbZI' }
+          );
+        } catch (err) {
+          console.error('Status notification email failed:', err);
+        }
+      }
+    }
+
     closeModal();
     renderTicketTable();
   } catch (error) {
@@ -735,7 +860,7 @@ function renderActivityFeed(ticket) {
     const isInternal = a.type === "internal";
     const iconClass  = isSystem   ? "fa-solid fa-gear"
                      : isInternal ? "fa-solid fa-lock"
-                     : "fa-solid fa-comment-sms";
+                     : "fa-solid fa-envelope";
     const labelColor = isSystem   ? "#888"
                      : isInternal ? "#e67e22"
                      : "#1976d2";

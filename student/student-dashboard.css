@@ -62,28 +62,6 @@ body {
 
 .nav-controls { display: flex; gap: 15px; align-items: center; }
 
-.search-bar { position: relative; }
-
-.search-icon { 
-    width: 14px !important; 
-    height: auto !important;
-    position: absolute; 
-    left: 12px; 
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.5; 
-    z-index: 2; 
-}
-
-.search-bar input { 
-    padding: 10px 15px 10px 38px; 
-    border-radius: 20px; 
-    border: 1px solid #ddd; 
-    width: 240px; 
-    outline: none;
-    font-size: 13px;
-}
-
 /* --- Shared Buttons --- */
 .btn {
     padding: 8px 20px;
@@ -748,14 +726,22 @@ td {
 }
 
 .attachment-pill {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 8px 16px; background: #fff; border: 1px solid #eaeaea;
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 14px; background: #fff; border: 1px solid #eaeaea;
   border-radius: 20px; font-size: 12px; font-weight: 600; color: #333;
-  text-decoration: none; transition: background 0.2s, border-color 0.2s; cursor: pointer;
-  margin-right: 8px; margin-bottom: 8px;
+  text-decoration: none; margin-right: 8px; margin-bottom: 8px;
 }
 .attachment-pill i { color: #888; }
-.attachment-pill:hover { background: #f8f8f8; border-color: #d0d0d0; color: #111; }
+.pill-actions { display: inline-flex; gap: 6px; margin-left: 4px; }
+.pill-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+  cursor: pointer; text-decoration: none; border: none; transition: background 0.15s;
+}
+.pill-view { background: #eff6ff; color: #2563eb; }
+.pill-view:hover { background: #dbeafe; }
+.pill-dl { background: #f0fdf4; color: #16a34a; }
+.pill-dl:hover { background: #dcfce7; }
 
 .activity-log-section h3 { font-size: 16px; 
     font-weight: 800; 

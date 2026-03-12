@@ -13,6 +13,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
     />
     <link rel="stylesheet" href="admin-dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   </head>
   <body>
     <!-- SIDEBAR -->
@@ -369,15 +370,15 @@
 
             <!-- Reply Box -->
             <div class="reply-tabs">
-              <div class="reply-tab active" id="tab-sms" onclick="switchReplyTab('sms')">
-                <i class="fa-solid fa-mobile-screen-button"></i> SMS Reply to User
+              <div class="reply-tab active" id="tab-email" onclick="switchReplyTab('email')">
+                <i class="fa-solid fa-envelope"></i> Email Reply to User
               </div>
               <div class="reply-tab" id="tab-internal" onclick="switchReplyTab('internal')">
                 <i class="fa-solid fa-lock"></i> Internal Note
               </div>
             </div>
             
-            <textarea class="reply-textarea" id="reply-textarea" placeholder="Type message to send via SMS..." oninput="updateCharCount()"></textarea>
+            <textarea class="reply-textarea" id="reply-textarea" placeholder="Type message to send via email..." oninput="updateCharCount()"></textarea>
             
             <!-- Wrapped Button and Counter in a Flex Container -->
             <div class="reply-footer">
@@ -405,7 +406,6 @@
                 <div class="reporter-details">
                   <strong id="modal-reporter-name">Loading...</strong>
                   <span id="modal-reporter-email">Loading...</span>
-                  <span id="modal-reporter-phone">Loading...</span>
                 </div>
               </div>
             </div>
@@ -583,6 +583,15 @@
           </div>
         </form>
       </div>
+    </div>
+
+    <!-- Attachment Preview Modal -->
+    <div id="att-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:999999;align-items:center;justify-content:center;flex-direction:column;">
+      <button onclick="closeAttachmentPreview()" style="position:absolute;top:20px;right:28px;background:none;border:none;color:#fff;font-size:36px;cursor:pointer;line-height:1;">&times;</button>
+      <img id="att-preview-img" src="" alt="" style="max-width:90vw;max-height:78vh;border-radius:8px;object-fit:contain;display:none;">
+      <iframe id="att-preview-iframe" src="" style="width:90vw;height:78vh;border:none;border-radius:8px;background:#fff;display:none;"></iframe>
+      <p id="att-preview-name" style="color:#ccc;margin-top:14px;font-size:13px;"></p>
+      <a id="att-preview-dl" href="" download="" style="margin-top:6px;color:#aaa;font-size:12px;text-decoration:underline;">Download</a>
     </div>
 
     <script type="module" src="admin-dashboard.js"></script>

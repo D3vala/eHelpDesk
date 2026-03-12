@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Status Updated - eHelpDesk</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .status-change {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .status-old {
+            font-size: 14px;
+            color: #666;
+            text-decoration: line-through;
+            margin-bottom: 5px;
+        }
+        .status-arrow {
+            font-size: 18px;
+            color: #007bff;
+            margin: 0 10px;
+        }
+        .status-new {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            display: inline-block;
+            padding: 8px 16px;
+            border: 2px solid #007bff;
+            border-radius: 20px;
+        }
+        .ticket-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .label {
+            font-weight: bold;
+            color: #666;
+            width: 30%;
+        }
+        .value {
+            color: #333;
+            width: 70%;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .note {
+            font-size: 12px;
+            color: #888;
+            font-style: italic;
+            margin-top: 15px;
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #ffc107;
+        }
+        .highlight-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .highlight-title {
+            font-weight: bold;
+            color: #0066cc;
+            margin-bottom: 5px;
+        }
+        .resolved-box {
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .resolved-title {
+            font-weight: bold;
+            color: #1b5e20;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">eHelpDesk</div>
+            <h1>Ticket Status Updated</h1>
+        </div>
+
+        <div class="status-change">
+            <div class="status-old">Status: {{old_status}}</div>
+            <span class="status-arrow">→</span>
+            <div class="status-new">Status: {{new_status}}</div>
+        </div>
+
+        <p>Hello {{to_name}},</p>
+        
+        <p>We wanted to inform you that your support ticket status has been updated. Here are the details:</p>
+
+        <div class="ticket-info">
+            <h3 style="margin-top: 0; color: #333;">Ticket Information</h3>
+            
+            <div class="info-row">
+                <span class="label">Ticket ID:</span>
+                <span class="value">{{ticket_id}}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">Subject:</span>
+                <span class="value">{{subject}}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">Updated:</span>
+                <span class="value">{{updated_at}}</span>
+            </div>
+        </div>
+
+        {% if new_status == 'Resolved' %}
+        <div class="resolved-box">
+            <div class="resolved-title">🎉 Great News! Your Ticket Has Been Resolved</div>
+            <p style="margin: 0; color: #333;">
+                Your support ticket has been successfully resolved. If you're still experiencing issues or need further assistance, please don't hesitate to contact us or create a new ticket.
+            </p>
+        </div>
+        {% else %}
+        <div class="highlight-box">
+            <div class="highlight-title">What This Means:</div>
+            <p style="margin: 0;">
+                {% if new_status == 'In Progress' %}
+                Your ticket is now being actively worked on by our support team.
+                {% elseif new_status == 'Breached' %}
+                <strong>Attention Required:</strong> This ticket has exceeded its SLA timeframe and requires immediate attention.
+                {% else %}
+                The ticket status has been changed to {{new_status}}.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="note">
+            *If you have any questions about this status change, please reply to this email or contact our support team directly.*
+        </div>
+
+        <div class="footer">
+            <p>eHelpDesk Support System</p>
+            <p>Mapúa University</p>
+            <p style="margin-top: 10px;">This is an automated message. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
