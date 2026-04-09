@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Tickets - eHelpDesk</title>
+    <link rel="stylesheet" href="../staff/staff-dashboard.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <!-- Supabase UMD build — works on file:// without a local server -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script>
+      window.supabase = supabase.createClient(
+        'https://ultmtnqbzckmyqffevjv.supabase.co',
+        'sb_publishable_R9_srXtrNCUeemY4PHiU4w_yP4S5cCJ'
+      );
+    </script>
+  </head>
+  <body>
+    <div class="header-top-section">
+      <header class="navbar">
+        <a href="../student/index.html" class="logo-link">
+          <div class="logo">
+            <img src="../img/headset-solid.svg" alt="Logo" class="icon-logo" />
+            <h1>eHelpDesk</h1>
+          </div>
+        </a>
+        <div class="nav-controls">
+          <div class="search-bar">
+            <img
+              src="../img/magnifying-glass-solid-full.svg"
+              alt="Search"
+              class="search-icon"
+            />
+            <input type="text" id="searchInput" placeholder="Search Tickets" />
+          </div>
+          <div class="auth-buttons" id="auth-section">
+            <div
+              class="profile-container"
+              id="profile-menu-wrapper"
+              style="position: relative; display: none"
+            >
+              <div id="dropdown-menu" class="user-dropdown">
+                <div class="dropdown-header">
+                  <p id="user-display-name" class="user-name-text">
+                    Loading...
+                  </p>
+                  <p id="user-display-email" class="user-email-text">
+                    Loading...
+                  </p>
+                </div>
+                <hr />
+                <button
+                  type="button"
+                  onclick="handleLogout()"
+                  class="logout-btn"
+                >
+                  <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                </button>
+              </div>
+            </div>
+            <a href="../login.html" id="login-nav-btn" class="btn btn-black"
+              >Login</a
+            >
+          </div>
+        </div>
+      </header>
+    </div>
+
+    <main class="container">
+      <section class="stats-container">
+        <div class="stat-card">
+          <div class="stat-info">
+            <p>My Tickets</p>
+            <span class="stat-number" id="stat-all">0</span>
+          </div>
+          <img
+            src="../img/ticket-solid-full.svg"
+            class="card-bg-icon reference-style ticket-upright"
+            alt=""
+          />
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <p>Pending Tickets</p>
+            <span class="stat-number" id="stat-pending">0</span>
+          </div>
+          <img
+            src="../img/clock-regular-full.svg"
+            class="card-bg-icon reference-style"
+            alt=""
+          />
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <p>Closed / Solved Tickets</p>
+            <span class="stat-number" id="stat-closed">0</span>
+          </div>
+          <img
+            src="../img/circle-check-regular-full.svg"
+            class="card-bg-icon reference-style"
+            alt=""
+          />
+        </div>
+      </section>
+
+      <div class="ticket-wrapper">
+        <div class="status-container" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+          <select class="status-dropdown" style="margin-bottom: 0;">
+            <option value="" disabled selected>Status</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+          </select>
+          <a href="student-dashboard.html" class="btn btn-black" style="margin-left: auto; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;">
+            <i class="fa-solid fa-plus"></i> Create Ticket
+          </a>
+        </div>
+
+        <div class="table-container">
+          <table id="ticket-table">
+            <thead>
+              <tr>
+                <th>Ticket ID</th>
+                <th>Subject</th>
+                <th>Created On</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr>
+                <td colspan="4" class="no-records">No Records to Display</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== TICKET DETAIL MODAL ===== -->
+    <div class="modal-overlay" id="ticket-detail-modal">
+      <div class="modal-container">
+
+        <!-- HEADER -->
+        <div class="modal-header">
+          <div class="modal-header-text">
+            <h2>
+              <span id="modal-ticket-id">&mdash;</span>
+              <span id="modal-ticket-status-badge" class="status-pill status-progress"></span>
+            </h2>
+            <p id="modal-ticket-subject">Loading...</p>
+          </div>
+          <button class="btn-close" onclick="closeTicketModal()">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- BODY -->
+        <div class="modal-body">
+
+          <!-- LEFT PANEL -->
+          <div class="modal-left">
+
+            <div class="description-box">
+              <h3>Description</h3>
+              <p id="modal-ticket-description">—</p>
+
+              <div class="attachments-section" id="modal-attachments-container">
+                <h4>ATTACHMENTS</h4>
+                <p style="font-size:13px; color:#888;">Loading...</p>
+              </div>
+            </div>
+
+            <!-- Activity Thread -->
+            <div class="activity-thread">
+              <h3>Activity Thread</h3>
+              <div id="activity-feed">
+                <p style="font-size:13px; color:#888;">No activities yet.</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT PANEL -->
+          <div class="modal-right">
+
+            <div class="sidebar-section">
+              <h4>TICKET DETAILS</h4>
+              <div class="details-grid">
+                <div class="detail-row">
+                  <span class="detail-label">Campus:</span>
+                  <span class="detail-value" id="modal-detail-campus">—</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Department:</span>
+                  <span class="detail-value" id="modal-detail-dept">—</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Priority:</span>
+                  <span class="detail-value" id="modal-detail-priority">—</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">CCs:</span>
+                  <span class="detail-value" id="modal-detail-cc">—</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Created:</span>
+                  <span class="detail-value" id="modal-detail-created">—</span>
+                </div>
+                <div class="detail-row" id="modal-resolved-row" style="display:none;">
+                  <span class="detail-label">Resolved:</span>
+                  <span class="detail-value" id="modal-detail-resolved">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <h4>SLA TIMER</h4>
+              <div class="sla-timer-large" id="modal-sla-timer">—</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeTicketModal()">Close</button>
+        </div>
+
+      </div>
+    </div>
+
+    <script src="index.js"></script>
+  </body>
+</html>
